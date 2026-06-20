@@ -37,26 +37,45 @@ code {
   background: rgba(148, 163, 184, 0.6);
 }
 
-/* Animated Gradient Background */
+/* Animated Mesh Gradient Background */
 .bg-animated-gradient {
-  background: linear-gradient(-45deg, #0f172a, #1e1b4b, #312e81, #0f172a);
-  background-size: 400% 400%;
-  animation: gradientBG 15s ease infinite;
+  background-color: #050505;
+  background-image: 
+    radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
+    radial-gradient(at 50% 0%, hsla(225,39%,30%,0.2) 0, transparent 50%), 
+    radial-gradient(at 100% 0%, hsla(339,49%,30%,0.2) 0, transparent 50%);
+  position: relative;
+  overflow: hidden;
 }
 
-@keyframes gradientBG {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+.bg-animated-gradient::before {
+  content: "";
+  position: absolute;
+  top: -50%; left: -50%; width: 200%; height: 200%;
+  background: 
+    radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.08) 0%, transparent 40%),
+    radial-gradient(circle at 80% 20%, rgba(168, 85, 247, 0.08) 0%, transparent 40%),
+    radial-gradient(circle at 20% 80%, rgba(56, 189, 248, 0.08) 0%, transparent 40%);
+  animation: rotateMesh 30s linear infinite;
+  z-index: 0;
+  pointer-events: none;
 }
 
-/* Glassmorphism Utilities - Glossy Finish */
+@keyframes rotateMesh {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Glassmorphism Utilities - Premium Finish */
 .glass-panel {
-  background: rgba(30, 41, 59, 0.4); /* slate-800 translucent */
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+  position: relative;
+  z-index: 1;
 }
 
 .glass-panel-light {

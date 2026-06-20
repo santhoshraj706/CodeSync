@@ -7,7 +7,7 @@ import Chat from '../components/Chat';
 import Whiteboard from '../components/Whiteboard';
 import OutputWindow from '../components/OutputWindow';
 import api from '../utils/api';
-import { Users, Code, PenTool, Play, LogOut, Copy, Hash, MessageSquare, Terminal } from 'lucide-react';
+import { Users, Code, PenTool, Play, LogOut, Copy, Hash, MessageSquare, Terminal, Download, Wifi, WifiOff, CheckCircle2, AlertCircle, Keyboard, X } from 'lucide-react';
 
 const Room = () => {
   const { roomId } = useParams();
@@ -22,6 +22,9 @@ const Room = () => {
   const [code, setCode] = useState('// Write your code here...');
   const [language, setLanguage] = useState('javascript');
   const [editorTheme, setEditorTheme] = useState('vs-dark');
+  const [isConnected, setIsConnected] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
   // Adjustable layout states
   const [leftWidth, setLeftWidth] = useState(280);
@@ -30,6 +33,11 @@ const Room = () => {
   const [isResizingRight, setIsResizingRight] = useState(false);
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 1024 : false);
   const [mobileTab, setMobileTab] = useState('workspace'); // 'users', 'workspace', 'chat'
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -90,13 +98,20 @@ const Room = () => {
 
     const joinRoom = () => {
       socket.emit('join-room', { roomId, username: user.username });
+      setIsConnected(true);
     };
 
     // Join immediately
-    joinRoom();
+    if (socket.connected) {
+      joinRoom();
+    }
+
+    const onConnect = () => joinRoom();
+    const onDisconnect = () => setIsConnected(false);
 
     // Re-join on reconnection so we get fresh state from server
-    socket.on('connect', joinRoom);
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
 
     socket.on('active-users', (users) => {
       setActiveUsers(users.filter(u => u.socketId !== socket.id));
@@ -105,7 +120,8 @@ const Room = () => {
     return () => {
       socket.emit('leave-room', { roomId, username: user.username });
       socket.off('active-users');
-      socket.off('connect', joinRoom);
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
     };
   }, [roomId, user, socket]);
 
@@ -118,10 +134,12 @@ const Room = () => {
         stdin: ''
       });
       setOutput(res.data);
+      showToast('Code executed successfully', 'success');
     } catch (err) {
       console.error(err);
       const errorMsg = err.response?.data?.message || err.response?.data?.error || 'Execution Failed';
       setOutput({ stderr: errorMsg });
+      showToast('Execution failed', 'error');
     } finally {
       setIsExecuting(false);
     }
@@ -129,15 +147,41 @@ const Room = () => {
 
   const copyRoomId = () => {
     navigator.clipboard.writeText(roomId);
-    alert('Room ID copied to clipboard');
+    showToast('Room ID copied to clipboard');
   };
 
+  const handleDownloadCode = () => {
+    const extMap = { javascript: 'js', python: 'py', java: 'java', cpp: 'cpp', c: 'c' };
+    const ext = extMap[language] || 'txt';
+    const blob = new Blob([code], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `script.${ext}`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Keyboard shortcut listener
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        handleRunCode();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === '/') {
+        setShowShortcuts(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [code, language]);
+
   return (
-    <div className="flex h-screen bg-animated-gradient text-white overflow-hidden font-sans selection:bg-indigo-500/30 flex-col md:flex-row">
+    <div className="flex h-screen w-screen bg-animated-gradient text-white overflow-hidden font-sans selection:bg-indigo-500/30 flex-col md:flex-row p-4 gap-2 box-border relative">
       
       {/* Mobile Top Header (only on mobile) */}
       {isMobile && (
-        <div className="px-4 py-3 bg-slate-900/80 border-b border-white/10 flex items-center justify-between z-30 backdrop-blur-md">
+        <div className="px-4 py-3 bg-slate-900/80 border-b border-white/10 flex items-center justify-between z-30 backdrop-blur-md rounded-xl mb-2">
           <div className="flex items-center gap-2">
             <span className="font-mono text-xs truncate text-indigo-300 max-w-[120px]">{roomId}</span>
             <button onClick={copyRoomId} className="p-1 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 active:scale-95 transition-all">
@@ -156,11 +200,24 @@ const Room = () => {
       {/* Left Panel: Users & Room Info */}
       {(!isMobile || mobileTab === 'users') && (
         <div 
-          className="glass-panel rounded-2xl flex flex-col overflow-hidden border-white/10 shadow-2xl relative z-10"
-          style={isMobile ? { width: '100%', height: 'calc(100vh - 120px)', margin: '12px' } : { width: `${leftWidth}px`, margin: '16px 8px 16px 16px' }}
+          className="glass-panel rounded-2xl flex flex-col overflow-hidden border-white/10 shadow-2xl relative z-10 min-h-0"
+          style={isMobile ? { width: '100%', flex: 1 } : { width: `${leftWidth}px`, flexShrink: 0 }}
         >
-          <div className="p-5 border-b border-white/10 bg-white/5 backdrop-blur-md">
-            <h2 className="text-sm font-bold text-indigo-400 uppercase tracking-widest mb-3">Workspace</h2>
+          <div className="p-5 border-b border-white/10 bg-white/5 backdrop-blur-md shrink-0 flex items-center justify-between">
+            <h2 className="text-sm font-bold text-indigo-400 uppercase tracking-widest">Workspace</h2>
+            {isConnected ? (
+              <div className="flex items-center gap-1.5 px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full" title="Connected">
+                <Wifi className="w-3 h-3 text-emerald-400" />
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 px-2 py-1 bg-amber-500/10 border border-amber-500/20 rounded-full" title="Reconnecting...">
+                <WifiOff className="w-3 h-3 text-amber-400" />
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span>
+              </div>
+            )}
+          </div>
+          <div className="p-4 border-b border-white/5 shrink-0">
             <div className="flex items-center justify-between glass-input p-3 rounded-xl group cursor-pointer hover:border-indigo-500/50 transition-all" onClick={copyRoomId}>
               <div className="flex items-center gap-2 overflow-hidden">
                 <Hash className="w-4 h-4 text-indigo-400" />
@@ -170,7 +227,7 @@ const Room = () => {
             </div>
           </div>
           
-          <div className="flex-1 p-5 overflow-y-auto custom-scrollbar">
+          <div className="flex-1 p-5 overflow-y-auto custom-scrollbar min-h-0">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider flex items-center">
                 <Users className="w-4 h-4 mr-2 text-indigo-400" /> Team
@@ -184,7 +241,10 @@ const Room = () => {
               {/* Current User */}
               <li className="flex items-center bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-3 shadow-inner">
                 <div className="relative">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-lg font-bold shadow-lg mr-3 border border-white/10">
+                  <div 
+                    className="w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold shadow-lg mr-3 border border-white/10 text-white"
+                    style={{ background: `linear-gradient(135deg, hsl(${user?.username?.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 360}, 80%, 60%), hsl(${(user?.username?.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 360 + 40) % 360}, 80%, 40%))` }}
+                  >
                     {user?.username?.charAt(0).toUpperCase()}
                   </div>
                   <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-400 rounded-full border-2 border-slate-900 shadow-[0_0_8px_rgba(52,211,153,0.8)]"></span>
@@ -196,17 +256,23 @@ const Room = () => {
               </li>
               
               {/* Other Users */}
-              {activeUsers.map((u, i) => (
-                <li key={u.socketId} className={`flex items-center bg-white/5 border border-white/5 rounded-xl p-3 hover:bg-white/10 transition-colors animate-fadeIn`} style={{animationDelay: `${(i+1)*100}ms`}}>
-                  <div className="relative">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center text-lg font-bold shadow-md mr-3 border border-white/5">
-                      {u.username?.charAt(0).toUpperCase()}
+              {activeUsers.map((u, i) => {
+                const hue = u.username?.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 360;
+                return (
+                  <li key={u.socketId} className={`flex items-center bg-white/5 border border-white/5 rounded-xl p-3 hover:bg-white/10 transition-colors animate-fadeIn`} style={{animationDelay: `${(i+1)*100}ms`}}>
+                    <div className="relative">
+                      <div 
+                        className="w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold shadow-md mr-3 border border-white/5 text-white"
+                        style={{ background: `linear-gradient(135deg, hsl(${hue}, 70%, 55%), hsl(${(hue + 40) % 360}, 70%, 35%))` }}
+                      >
+                        {u.username?.charAt(0).toUpperCase()}
+                      </div>
+                      <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-400 rounded-full border-2 border-slate-900 shadow-[0_0_8px_rgba(52,211,153,0.5)] animate-pulse"></span>
                     </div>
-                    <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-400 rounded-full border-2 border-slate-900 shadow-[0_0_8px_rgba(52,211,153,0.5)] animate-pulse"></span>
-                  </div>
-                  <span className="text-gray-200 font-medium text-sm">{u.username}</span>
-                </li>
-              ))}
+                    <span className="text-gray-200 font-medium text-sm">{u.username}</span>
+                  </li>
+                );
+              })}
               
               {activeUsers.length === 0 && (
                 <li className="text-xs text-gray-500 italic text-center p-4 bg-white/5 rounded-xl border border-dashed border-white/10">
@@ -217,12 +283,19 @@ const Room = () => {
           </div>
           
           {!isMobile && (
-            <div className="p-4 border-t border-white/10 bg-white/5">
+            <div className="p-4 border-t border-white/10 bg-white/5 shrink-0 flex gap-2">
               <button
                 onClick={() => navigate('/dashboard')}
-                className="w-full p-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl flex items-center justify-center transition-all font-semibold hover:shadow-[0_0_15px_rgba(239,68,68,0.2)]"
+                className="flex-1 p-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl flex items-center justify-center transition-all font-semibold hover:shadow-[0_0_15px_rgba(239,68,68,0.2)]"
               >
-                <LogOut className="w-4 h-4 mr-2" /> Leave Room
+                <LogOut className="w-4 h-4 mr-2" /> Leave
+              </button>
+              <button
+                onClick={() => setShowShortcuts(true)}
+                className="w-12 h-12 bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 hover:text-white border border-white/10 rounded-xl flex items-center justify-center transition-all"
+                title="Shortcuts (Ctrl+/)"
+              >
+                <Keyboard className="w-5 h-5" />
               </button>
             </div>
           )}
@@ -233,35 +306,36 @@ const Room = () => {
       {!isMobile && (
         <div 
           onMouseDown={startResizeLeft}
-          className={`w-1 cursor-col-resize self-stretch hover:w-1.5 hover:bg-indigo-500/30 active:bg-indigo-500/80 transition-all z-20 ${isResizingLeft ? 'bg-indigo-500/80 w-1.5' : ''}`}
+          className={`w-1 cursor-col-resize self-stretch hover:w-1.5 hover:bg-indigo-500/30 active:bg-indigo-500/80 transition-all z-20 shrink-0 mx-1 ${isResizingLeft ? 'bg-indigo-500/80 w-1.5' : ''}`}
         />
       )}
 
       {/* Center: Editor / Whiteboard & Output */}
       {(!isMobile || mobileTab === 'workspace') && (
         <div 
-          className="flex-1 flex flex-col relative z-10"
-          style={isMobile ? { height: 'calc(100vh - 120px)', margin: '12px' } : { margin: '16px 8px' }}
+          className="flex-1 flex flex-col relative z-10 min-h-0 min-w-0"
+          style={isMobile ? { flex: 1 } : {}}
         >
           
           {/* Top Action Bar */}
-          <div className="h-16 glass-panel rounded-t-2xl border-b-0 border-white/10 flex items-center justify-between px-4 z-20">
-            <div className="flex space-x-2 bg-slate-900/50 p-1 rounded-xl border border-white/5">
+          <div className="h-[72px] shrink-0 glass-panel rounded-t-[2rem] border-b-0 border-white/10 flex items-center justify-between px-6 z-20 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent"></div>
+            <div className="flex space-x-2 bg-slate-900/60 p-1.5 rounded-[1.25rem] border border-white/5 backdrop-blur-md shadow-inner">
               <button
-                className={`px-4 md:px-5 py-2 rounded-lg flex items-center text-xs md:text-sm font-semibold transition-all ${
+                className={`px-5 py-2.5 rounded-xl flex items-center text-sm font-bold transition-all duration-300 ${
                   activeTab === 'editor' 
-                    ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/25' 
-                    : 'text-gray-400 hover:text-white hover:bg-white/5'
+                    ? 'bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-[0_4px_15px_rgba(99,102,241,0.4)]' 
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
                 }`}
                 onClick={() => setActiveTab('editor')}
               >
                 <Code className="w-4 h-4 mr-2" /> Code
               </button>
               <button
-                className={`px-4 md:px-5 py-2 rounded-lg flex items-center text-xs md:text-sm font-semibold transition-all ${
+                className={`px-5 py-2.5 rounded-xl flex items-center text-sm font-bold transition-all duration-300 ${
                   activeTab === 'whiteboard' 
-                    ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/25' 
-                    : 'text-gray-400 hover:text-white hover:bg-white/5'
+                    ? 'bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-[0_4px_15px_rgba(99,102,241,0.4)]' 
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
                 }`}
                 onClick={() => setActiveTab('whiteboard')}
               >
@@ -271,6 +345,26 @@ const Room = () => {
             
             {activeTab === 'editor' && (
               <div className="flex items-center space-x-2 md:space-x-3">
+                <button
+                  onClick={() => {
+                    if (!document.fullscreenElement) {
+                      document.documentElement.requestFullscreen().catch(err => console.log(err));
+                    } else {
+                      document.exitFullscreen();
+                    }
+                  }}
+                  title="Toggle Fullscreen"
+                  className="bg-slate-900/80 border border-white/10 text-slate-300 hover:text-white px-3 py-1.5 md:py-2 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all cursor-pointer hover:bg-slate-800 flex items-center justify-center shadow-inner"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+                </button>
+                <button
+                  onClick={handleDownloadCode}
+                  title="Download Code"
+                  className="bg-slate-900/80 border border-white/10 text-slate-300 hover:text-white px-3 py-1.5 md:py-2 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all cursor-pointer hover:bg-slate-800 flex items-center justify-center shadow-inner"
+                >
+                  <Download className="w-4 h-4" />
+                </button>
                 <select
                   className="bg-slate-900/80 border border-white/10 text-white text-xs md:text-sm rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent block px-2 md:px-3 py-1.5 md:py-2 outline-none transition-all cursor-pointer hover:bg-slate-800"
                   value={editorTheme}
@@ -309,7 +403,7 @@ const Room = () => {
           {/* Main Workspace */}
           <div className="flex-1 relative bg-[#0f111a] border border-white/10 z-10 overflow-hidden shadow-2xl">
             <div className={`absolute inset-0 ${activeTab === 'editor' ? 'block' : 'hidden'}`}>
-              <EditorComponent roomId={roomId} code={code} setCode={setCode} language={language} setLanguage={setLanguage} theme={editorTheme} />
+              <EditorComponent roomId={roomId} code={code} setCode={setCode} language={language} setLanguage={setLanguage} theme={editorTheme} showToast={showToast} />
             </div>
             <div className={`absolute inset-0 ${activeTab === 'whiteboard' ? 'block' : 'hidden'}`}>
               <Whiteboard roomId={roomId} isVisible={activeTab === 'whiteboard'} />
@@ -318,12 +412,39 @@ const Room = () => {
 
           {/* Output Window */}
           <div className="h-44 md:h-56 glass-panel rounded-b-2xl border-t-0 border-white/10 flex flex-col z-20">
-            <div className="bg-white/5 border-b border-white/5 px-5 py-2 text-[10px] md:text-xs text-indigo-300 font-bold uppercase tracking-widest flex items-center">
-              <div className="w-2 h-2 rounded-full bg-indigo-400 mr-2 animate-pulse"></div>
-              Terminal Output
+            <div className="bg-white/5 border-b border-white/5 px-5 py-2 flex items-center justify-between">
+              <div className="text-[10px] md:text-xs text-indigo-300 font-bold uppercase tracking-widest flex items-center">
+                <div className="w-2 h-2 rounded-full bg-indigo-400 mr-2 animate-pulse"></div>
+                Terminal Output
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => {
+                    const text = output?.stdout || output?.stderr || output?.compile_output;
+                    if (text) {
+                      navigator.clipboard.writeText(text);
+                      showToast('Output copied to clipboard');
+                    }
+                  }}
+                  disabled={!output}
+                  className="text-slate-400 hover:text-white p-1 rounded hover:bg-white/10 transition-colors disabled:opacity-30 flex items-center"
+                  title="Copy Output"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => setOutput(null)}
+                  disabled={!output}
+                  className="text-slate-400 hover:text-red-400 p-1 rounded hover:bg-white/10 transition-colors disabled:opacity-30 text-[10px] font-bold uppercase tracking-wider px-2"
+                  title="Clear Output"
+                >
+                  Clear
+                </button>
+              </div>
             </div>
             <div className="flex-1 p-4 overflow-y-auto font-mono text-xs md:text-sm custom-scrollbar bg-black/40">
-              <OutputWindow output={output} />
+              <OutputWindow output={output} isExecuting={isExecuting} />
             </div>
           </div>
         </div>
@@ -333,15 +454,15 @@ const Room = () => {
       {!isMobile && (
         <div 
           onMouseDown={startResizeRight}
-          className={`w-1 cursor-col-resize self-stretch hover:w-1.5 hover:bg-indigo-500/30 active:bg-indigo-500/80 transition-all z-20 ${isResizingRight ? 'bg-indigo-500/80 w-1.5' : ''}`}
+          className={`w-1 cursor-col-resize self-stretch hover:w-1.5 hover:bg-indigo-500/30 active:bg-indigo-500/80 transition-all z-20 shrink-0 mx-1 ${isResizingRight ? 'bg-indigo-500/80 w-1.5' : ''}`}
         />
       )}
 
       {/* Right Panel: Chat */}
       {(!isMobile || mobileTab === 'chat') && (
         <div 
-          className="flex flex-col relative z-10"
-          style={isMobile ? { width: '100%', height: 'calc(100vh - 120px)', margin: '12px' } : { width: `${rightWidth}px`, margin: '16px 16px 16px 8px' }}
+          className="flex flex-col relative z-10 min-h-0"
+          style={isMobile ? { width: '100%', flex: 1 } : { width: `${rightWidth}px`, flexShrink: 0 }}
         >
           <Chat roomId={roomId} />
         </div>
@@ -349,31 +470,96 @@ const Room = () => {
 
       {/* Mobile Bottom Navigation (only on mobile) */}
       {isMobile && (
-        <div className="h-16 bg-slate-950/90 border-t border-white/10 flex items-center justify-around z-30 backdrop-blur-md sticky bottom-0">
-          <button
+        <div className="h-16 shrink-0 bg-slate-900/80 backdrop-blur-md rounded-xl border border-white/10 flex items-center justify-around z-30 mb-2">
+          <button 
             onClick={() => setMobileTab('users')}
-            className={`flex flex-col items-center justify-center w-20 h-full transition-all gap-1 ${mobileTab === 'users' ? 'text-indigo-400 scale-105' : 'text-gray-400'}`}
+            className={`flex flex-col items-center justify-center w-full h-full rounded-xl transition-all ${mobileTab === 'users' ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-400 hover:text-white'}`}
           >
-            <Users className="w-5 h-5" />
-            <span className="text-[10px] font-semibold tracking-wider uppercase">Team</span>
+            <Users className="w-5 h-5 mb-1" />
+            <span className="text-[10px] font-bold tracking-wider">TEAM</span>
           </button>
-          <button
+          <button 
             onClick={() => setMobileTab('workspace')}
-            className={`flex flex-col items-center justify-center w-20 h-full transition-all gap-1 ${mobileTab === 'workspace' ? 'text-indigo-400 scale-105' : 'text-gray-400'}`}
+            className={`flex flex-col items-center justify-center w-full h-full rounded-xl transition-all ${mobileTab === 'workspace' ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-400 hover:text-white'}`}
           >
-            <Code className="w-5 h-5" />
-            <span className="text-[10px] font-semibold tracking-wider uppercase">Workspace</span>
+            <Code className="w-5 h-5 mb-1" />
+            <span className="text-[10px] font-bold tracking-wider">WORK</span>
           </button>
-          <button
+          <button 
             onClick={() => setMobileTab('chat')}
-            className={`flex flex-col items-center justify-center w-20 h-full transition-all gap-1 ${mobileTab === 'chat' ? 'text-indigo-400 scale-105' : 'text-gray-400'}`}
+            className={`flex flex-col items-center justify-center w-full h-full rounded-xl transition-all ${mobileTab === 'chat' ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-400 hover:text-white'}`}
           >
-            <MessageSquare className="w-5 h-5" />
-            <span className="text-[10px] font-semibold tracking-wider uppercase">Chat</span>
+            <MessageSquare className="w-5 h-5 mb-1" />
+            <span className="text-[10px] font-bold tracking-wider">CHAT</span>
           </button>
         </div>
       )}
 
+      {/* Toast Notification */}
+      {toast && (
+        <div className="fixed bottom-10 left-1/2 transform -translate-x-1/2 z-[100] animate-fadeIn">
+          <div className={`flex items-center gap-3 px-5 py-3 rounded-full shadow-2xl backdrop-blur-md border ${toast.type === 'error' ? 'bg-red-500/20 border-red-500/30 text-red-300' : 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300'}`}>
+            {toast.type === 'error' ? <AlertCircle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
+            <span className="font-semibold text-sm tracking-wide">{toast.message}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Keyboard Shortcuts Modal */}
+      {showShortcuts && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-md animate-fadeIn px-4">
+          <div className="bg-slate-900 border border-white/10 p-8 rounded-[2rem] shadow-2xl max-w-lg w-full relative">
+            <button 
+              onClick={() => setShowShortcuts(false)}
+              className="absolute top-6 right-6 text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 p-2 rounded-full transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <div className="flex items-center gap-4 mb-8">
+              <div className="w-12 h-12 bg-indigo-500/20 rounded-xl flex items-center justify-center border border-indigo-500/30 text-indigo-400">
+                <Keyboard className="w-6 h-6" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-white">Keyboard Shortcuts</h2>
+                <p className="text-slate-400 text-sm">Boost your productivity</p>
+              </div>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
+                <span className="text-slate-300 font-medium">Run Code</span>
+                <div className="flex gap-1.5">
+                  <span className="bg-slate-800 text-slate-300 px-2 py-1 rounded text-xs font-mono border border-slate-700">Ctrl</span>
+                  <span className="bg-slate-800 text-slate-300 px-2 py-1 rounded text-xs font-mono border border-slate-700">Enter</span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
+                <span className="text-slate-300 font-medium">Toggle Shortcuts</span>
+                <div className="flex gap-1.5">
+                  <span className="bg-slate-800 text-slate-300 px-2 py-1 rounded text-xs font-mono border border-slate-700">Ctrl</span>
+                  <span className="bg-slate-800 text-slate-300 px-2 py-1 rounded text-xs font-mono border border-slate-700">/</span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
+                <span className="text-slate-300 font-medium">Format Document</span>
+                <div className="flex gap-1.5">
+                  <span className="bg-slate-800 text-slate-300 px-2 py-1 rounded text-xs font-mono border border-slate-700">Shift</span>
+                  <span className="bg-slate-800 text-slate-300 px-2 py-1 rounded text-xs font-mono border border-slate-700">Alt</span>
+                  <span className="bg-slate-800 text-slate-300 px-2 py-1 rounded text-xs font-mono border border-slate-700">F</span>
+                </div>
+              </div>
+            </div>
+            <div className="mt-8 pt-6 border-t border-white/10">
+              <button 
+                onClick={() => setShowShortcuts(false)}
+                className="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 rounded-xl transition-colors shadow-lg shadow-indigo-500/20"
+              >
+                Got it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

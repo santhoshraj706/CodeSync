@@ -1,7 +1,24 @@
 import React from 'react';
 import { Terminal, AlertCircle, CheckCircle2, Clock, Cpu } from 'lucide-react';
 
-const OutputWindow = ({ output }) => {
+const OutputWindow = ({ output, isExecuting }) => {
+  if (isExecuting) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-indigo-400 opacity-90 animate-pulse">
+        <div className="relative mb-4">
+          <Terminal className="w-12 h-12 text-indigo-500/50 absolute top-0 left-0 animate-ping" />
+          <Terminal className="w-12 h-12 relative z-10" />
+        </div>
+        <p className="font-mono text-sm tracking-widest uppercase">Executing Code...</p>
+        <div className="flex gap-1 mt-3">
+          <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+          <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+          <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+        </div>
+      </div>
+    );
+  }
+
   if (!output) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-slate-500 opacity-70">

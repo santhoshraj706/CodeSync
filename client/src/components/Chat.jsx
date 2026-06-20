@@ -37,7 +37,7 @@ const Chat = ({ roomId }) => {
   const [showEmoji, setShowEmoji] = useState(false);
   const socket = useContext(SocketContext);
   const { user } = useContext(AuthContext);
-  const messagesEndRef = useRef(null);
+  const chatContainerRef = useRef(null);
 
   useEffect(() => {
     if (!socket) return;
@@ -50,7 +50,7 @@ const Chat = ({ roomId }) => {
       setMessages((prev) => [...prev, msg]);
       
       // Play a soft notification chime if message is from another team member
-      if (msg.username !== user.username) {
+      if (user && msg.username !== user.username) {
         playNotificationSound();
       }
     };
@@ -65,7 +65,12 @@ const Chat = ({ roomId }) => {
   }, [socket, user]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTo({
+        top: chatContainerRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
   }, [messages]);
 
   const handleSend = (e) => {
@@ -111,7 +116,7 @@ const Chat = ({ roomId }) => {
       </div>
 
       {/* Message Area */}
-      <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar bg-slate-950/20">
+      <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar bg-slate-950/20 relative">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center p-6 space-y-3">
             <div className="p-3 bg-white/5 rounded-2xl border border-white/5 text-gray-400">
@@ -126,7 +131,15 @@ const Chat = ({ roomId }) => {
             const isMe = msg.username === user.username;
             return (
               <div key={idx} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-fadeIn`}>
-                <div className={`flex items-center gap-1.5 mb-1.5 px-1`}>
+                <div className={`flex items-center gap-1.5 mb-1.5 px-1 ${isMe ? 'flex-row-reverse' : ''}`}>
+                  {!isMe && (
+                    <div 
+                      className="w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold text-white shadow-sm border border-white/10"
+                      style={{ background: `linear-gradient(135deg, hsl(${msg.username?.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 360}, 70%, 55%), hsl(${(msg.username?.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 360 + 40) % 360}, 70%, 35%))` }}
+                    >
+                      {msg.username?.charAt(0).toUpperCase()}
+                    </div>
+                  )}
                   <span className="text-[10px] uppercase tracking-wider text-indigo-300 font-bold">
                     {isMe ? 'You' : msg.username}
                   </span>
@@ -138,14 +151,20 @@ const Chat = ({ roomId }) => {
                 }`}>
                   <p className="break-words text-sm leading-relaxed font-normal">{msg.message}</p>
                 </div>
-                <span className="text-[9px] text-slate-500 mt-1 px-1 tracking-tight">
-                  {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </span>
+                <div className="flex items-center gap-1 mt-1 px-1">
+                  <span className="text-[9px] text-slate-500 tracking-tight">
+                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                  {isMe && (
+                    <svg className="w-3 h-3 text-indigo-400 opacity-70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                  )}
+                </div>
               </div>
             );
           })
         )}
-        <div ref={messagesEndRef} />
       </div>
       
       {/* Emoji Picker Popover */}
@@ -155,29 +174,42 @@ const Chat = ({ roomId }) => {
         </div>
       )}
 
-      {/* Input Form */}
-      <form onSubmit={handleSend} className="p-4 bg-slate-950/60 border-t border-white/10 flex items-center relative z-40 gap-2.5 backdrop-blur-xl">
-        <button
-          type="button"
-          onClick={() => setShowEmoji(!showEmoji)}
-          className="text-slate-400 hover:text-indigo-400 p-2.5 rounded-xl hover:bg-white/5 transition-all border border-white/5 hover:border-indigo-500/20 active:scale-95"
-        >
-          <Smile className="w-5 h-5" />
-        </button>
-        <input
-          type="text"
-          className="flex-1 bg-white/5 focus:bg-white/10 border border-white/10 focus:border-indigo-500/40 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-400 focus:outline-none transition-all duration-300 focus:ring-1 focus:ring-indigo-500/30"
-          placeholder="Send a message to team..."
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-        />
-        <button
-          type="submit"
-          className="bg-indigo-500 hover:bg-indigo-600 text-white p-3 rounded-xl flex items-center justify-center transition-all shadow-[0_0_15px_rgba(99,102,241,0.3)] hover:shadow-[0_0_20px_rgba(99,102,241,0.5)] border border-indigo-400/30 active:scale-95"
-        >
-          <Send className="w-4.5 h-4.5 ml-0.5" />
-        </button>
-      </form>
+      {/* Typing Indicator & Input Form */}
+      <div className="bg-slate-950/60 border-t border-white/10 relative z-40 backdrop-blur-xl">
+        {message.length > 0 && (
+          <div className="absolute -top-6 left-4 flex items-center gap-2 text-[10px] text-indigo-300 font-medium animate-fadeIn">
+            <div className="flex space-x-0.5">
+              <span className="w-1 h-1 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+              <span className="w-1 h-1 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+              <span className="w-1 h-1 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+            </div>
+            Typing message...
+          </div>
+        )}
+        <form onSubmit={handleSend} className="p-4 flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => setShowEmoji(!showEmoji)}
+            className="text-slate-400 hover:text-indigo-400 p-2.5 rounded-xl hover:bg-white/5 transition-all border border-white/5 hover:border-indigo-500/20 active:scale-95"
+          >
+            <Smile className="w-5 h-5" />
+          </button>
+          <input
+            type="text"
+            className="flex-1 bg-white/5 focus:bg-white/10 border border-white/10 focus:border-indigo-500/40 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-400 focus:outline-none transition-all duration-300 focus:ring-1 focus:ring-indigo-500/30"
+            placeholder="Send a message to team..."
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+          />
+          <button
+            type="submit"
+            className="bg-indigo-500 hover:bg-indigo-600 text-white p-3 rounded-xl flex items-center justify-center transition-all shadow-[0_0_15px_rgba(99,102,241,0.3)] hover:shadow-[0_0_20px_rgba(99,102,241,0.5)] border border-indigo-400/30 active:scale-95 disabled:opacity-50 disabled:active:scale-100"
+            disabled={!message.trim()}
+          >
+            <Send className="w-4.5 h-4.5 ml-0.5" />
+          </button>
+        </form>
+      </div>
     </div>
   );
 };

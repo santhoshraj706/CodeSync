@@ -33,6 +33,7 @@ app.use('/api/rooms', roomRoutes);
 app.use('/api/execute', executeRoutes);
 
 // Connect to MongoDB
+mongoose.set('bufferCommands', false);
 mongoose.connect(process.env.MONGO_URI)
 .then(() => console.log('MongoDB Connected'))
 .catch(err => console.error('MongoDB Connection Error:', err));

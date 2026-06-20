@@ -1,6 +1,7 @@
 const Room = require('../models/Room');
 
 const roomUsers = {}; // { roomId: [{ username, socketId }] } — active connections only (in-memory)
+const roomStates = {}; // { roomId: { code: string, language: string, messages: Array, strokes: Array } } - active room state cache
 
 const socketHandler = (io) => {
   io.on('connection', (socket) => {
@@ -16,111 +17,179 @@ const socketHandler = (io) => {
 
       // Track active socket connections in memory
       if (!roomUsers[roomId]) roomUsers[roomId] = [];
-      // Remove any stale entry for this socket first
       roomUsers[roomId] = roomUsers[roomId].filter(u => u.socketId !== socket.id);
       roomUsers[roomId].push({ username, socketId: socket.id });
 
       // Broadcast full active users list to EVERYONE in the room
       io.to(roomId).emit('active-users', roomUsers[roomId]);
 
-      // Load persisted room state from MongoDB
-      try {
-        const room = await Room.findOne({ roomId });
-        if (room) {
-          // Send current code state immediately
-          socket.emit('room-state', {
-            code: room.lastCode,
-            language: room.language
-          });
+      // Initialize in-memory cache for this room if it doesn't exist
+      if (!roomStates[roomId]) {
+        roomStates[roomId] = {
+          code: '// Write your code here...',
+          language: 'javascript',
+          messages: [],
+          strokes: []
+        };
 
-          // Send persisted messages (last 50)
-          if (room.messages && room.messages.length > 0) {
-            socket.emit('chat-history', room.messages.slice(-50));
+        // Try to load persisted state from MongoDB as background task
+        try {
+          const room = await Room.findOne({ roomId });
+          if (room && roomStates[roomId]) {
+            // Only update cache if it hasn't been heavily modified in-memory yet
+            if (roomStates[roomId].code === '// Write your code here...' && roomStates[roomId].messages.length === 0) {
+              roomStates[roomId].code = room.lastCode || '// Write your code here...';
+              roomStates[roomId].language = room.language || 'javascript';
+              roomStates[roomId].messages = room.messages || [];
+              roomStates[roomId].strokes = room.strokes || [];
+            }
           }
-
-          // Send persisted strokes
-          if (room.strokes && room.strokes.length > 0) {
-            socket.emit('whiteboard-history', room.strokes);
-          }
+        } catch (err) {
+          console.error('Error loading room state from MongoDB:', err.message);
         }
-      } catch (err) {
-        console.error('Error loading room state:', err);
+      }
+
+      // Instantly send cached in-memory state to the joining user
+      socket.emit('room-state', {
+        code: roomStates[roomId].code,
+        language: roomStates[roomId].language
+      });
+
+      if (roomStates[roomId].messages.length > 0) {
+        socket.emit('chat-history', roomStates[roomId].messages);
+      }
+
+      if (roomStates[roomId].strokes.length > 0) {
+        socket.emit('whiteboard-history', roomStates[roomId].strokes);
       }
 
       console.log(`${username} joined room ${roomId}`);
     });
 
-    // Code change — broadcast to others + persist immediately
     socket.on('code-change', ({ roomId, code }) => {
-      // Broadcast to all OTHER clients immediately
+      // Sync in-memory cache
+      if (roomStates[roomId]) {
+        roomStates[roomId].code = code;
+      }
+      
+      // Broadcast to other users immediately
       socket.to(roomId).emit('code-sync', { code });
-      // Persist with last-write-wins
-      Room.updateOne({ roomId }, { lastCode: code }).catch(err => console.error(err));
+      
+      // Persist to MongoDB in background
+      Room.updateOne({ roomId }, { lastCode: code }).catch(err => console.error('DB Error updating code:', err.message));
     });
 
     socket.on('language-change', ({ roomId, language }) => {
+      if (roomStates[roomId]) {
+        roomStates[roomId].language = language;
+      }
       socket.to(roomId).emit('language-sync', { language });
-      Room.updateOne({ roomId }, { language }).catch(err => console.error(err));
+      Room.updateOne({ roomId }, { language }).catch(err => console.error('DB Error updating language:', err.message));
     });
 
-    // Chat message — broadcast to ALL (including sender) for consistency
-    socket.on('chat-message', async ({ roomId, message, username, timestamp }) => {
+    socket.on('chat-message', ({ roomId, message, username, timestamp }) => {
       const msgObj = { message, username, timestamp };
 
-      // Persist to MongoDB (keep last 50)
-      try {
-        await Room.updateOne(
-          { roomId },
-          {
-            $push: {
-              messages: {
-                $each: [msgObj],
-                $slice: -50
-              }
+      // Sync in-memory cache
+      if (roomStates[roomId]) {
+        roomStates[roomId].messages.push(msgObj);
+        if (roomStates[roomId].messages.length > 50) {
+          roomStates[roomId].messages.shift();
+        }
+      }
+
+      // Broadcast to all OTHER clients
+      socket.to(roomId).emit('chat-message', msgObj);
+
+      // Persist to MongoDB in background
+      Room.updateOne(
+        { roomId },
+        {
+          $push: {
+            messages: {
+              $each: [msgObj],
+              $slice: -50
             }
           }
-        );
-      } catch (err) {
-        console.error('Error saving message:', err);
-      }
-
-      // Broadcast to all OTHER clients (sender handles its own message locally)
-      socket.to(roomId).emit('chat-message', msgObj);
+        }
+      ).catch(err => console.error('DB Error saving message:', err.message));
     });
 
-    socket.on('whiteboard-draw', async ({ roomId, drawData }) => {
-      // Persist stroke to MongoDB
-      try {
-        await Room.updateOne(
-          { roomId },
-          { $push: { strokes: drawData } }
-        );
-      } catch (err) {
-        console.error('Error saving stroke:', err);
+    socket.on('whiteboard-draw', ({ roomId, drawData }) => {
+      // Sync in-memory cache
+      if (roomStates[roomId]) {
+        if (drawData.type === 'stickynote') {
+          const { action, id, x0, y0, text, strokeColor } = drawData;
+          if (action === 'create') {
+            roomStates[roomId].strokes.push(drawData);
+          } else if (action === 'update') {
+            roomStates[roomId].strokes = roomStates[roomId].strokes.map(s => 
+              (s.type === 'stickynote' && s.id === id) ? { ...s, x0: x0 ?? s.x0, y0: y0 ?? s.y0, text: text ?? s.text, strokeColor: strokeColor ?? s.strokeColor } : s
+            );
+          } else if (action === 'delete') {
+            roomStates[roomId].strokes = roomStates[roomId].strokes.filter(s => !(s.type === 'stickynote' && s.id === id));
+          }
+        } else {
+          roomStates[roomId].strokes.push(drawData);
+        }
       }
 
-      // Broadcast to all OTHER clients immediately
+      // Broadcast to other users immediately
       socket.to(roomId).emit('whiteboard-draw', { drawData });
-    });
 
-    socket.on('whiteboard-clear', async ({ roomId }) => {
-      // Clear all strokes from MongoDB
-      try {
-        await Room.updateOne({ roomId }, { strokes: [] });
-      } catch (err) {
-        console.error('Error clearing strokes:', err);
+      // Persist to MongoDB in background
+      if (drawData.type === 'stickynote') {
+        const { action, id, x0, y0, text, strokeColor } = drawData;
+        if (action === 'create') {
+          Room.updateOne({ roomId }, { $push: { strokes: drawData } }).catch(err => console.error(err));
+        } else if (action === 'update') {
+          Room.updateOne(
+            { roomId, "strokes.id": id },
+            { 
+              $set: { 
+                "strokes.$.x0": x0, 
+                "strokes.$.y0": y0, 
+                "strokes.$.text": text,
+                "strokes.$.strokeColor": strokeColor
+              } 
+            }
+          ).catch(err => console.error('DB Error updating sticky note:', err.message));
+        } else if (action === 'delete') {
+          Room.updateOne(
+            { roomId },
+            { $pull: { strokes: { id } } }
+          ).catch(err => console.error('DB Error deleting sticky note:', err.message));
+        }
+      } else {
+        Room.updateOne({ roomId }, { $push: { strokes: drawData } }).catch(err => console.error('DB Error saving stroke:', err.message));
       }
-
-      socket.to(roomId).emit('whiteboard-clear');
     });
+
+    socket.on('whiteboard-clear', ({ roomId }) => {
+      if (roomStates[roomId]) {
+        roomStates[roomId].strokes = [];
+      }
+      socket.to(roomId).emit('whiteboard-clear');
+      Room.updateOne({ roomId }, { strokes: [] }).catch(err => console.error('DB Error clearing board:', err.message));
+    });
+
+    const leaveRoomHandler = (roomId, socketId) => {
+      if (roomUsers[roomId]) {
+        roomUsers[roomId] = roomUsers[roomId].filter(u => u.socketId !== socketId);
+        io.to(roomId).emit('active-users', roomUsers[roomId]);
+
+        // Clean up inactive room cache to prevent memory leaks when room becomes empty
+        if (roomUsers[roomId].length === 0) {
+          delete roomStates[roomId];
+          delete roomUsers[roomId];
+          console.log(`Cleaned up memory for inactive room: ${roomId}`);
+        }
+      }
+    };
 
     socket.on('leave-room', ({ roomId, username }) => {
       socket.leave(roomId);
-      if (roomUsers[roomId]) {
-        roomUsers[roomId] = roomUsers[roomId].filter(u => u.socketId !== socket.id);
-        // Broadcast updated list to everyone remaining
-        io.to(roomId).emit('active-users', roomUsers[roomId]);
-      }
+      leaveRoomHandler(roomId, socket.id);
       currentRoomId = null;
       console.log(`${username} left room ${roomId}`);
     });
@@ -129,11 +198,7 @@ const socketHandler = (io) => {
       const rooms = Array.from(socket.rooms);
       rooms.forEach(roomId => {
         if (roomId !== socket.id) {
-          if (roomUsers[roomId]) {
-            roomUsers[roomId] = roomUsers[roomId].filter(u => u.socketId !== socket.id);
-            // Broadcast updated list to everyone remaining
-            io.to(roomId).emit('active-users', roomUsers[roomId]);
-          }
+          leaveRoomHandler(roomId, socket.id);
         }
       });
     });

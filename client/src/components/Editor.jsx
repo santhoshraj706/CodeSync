@@ -9,10 +9,10 @@ const EditorComponent = ({ roomId, code, setCode, language, setLanguage }) => {
   // Keep track of the latest code value (either received from remote or sent locally)
   const latestCodeRef = useRef(code);
 
-  // Initialize/sync latestCodeRef when room changes
+  // Sync latestCodeRef whenever the code prop changes from parent
   useEffect(() => {
     latestCodeRef.current = code;
-  }, [roomId]);
+  }, [code]);
 
   // Register socket listeners ONCE — no dependency on `code`
   useEffect(() => {

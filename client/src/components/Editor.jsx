@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useContext, useCallback } from 'react';
 import MonacoEditor from '@monaco-editor/react';
 import { SocketContext } from '../context/SocketContext';
 
-const EditorComponent = ({ roomId, code, setCode, language, setLanguage }) => {
+const EditorComponent = ({ roomId, code, setCode, language, setLanguage, theme }) => {
   const socket = useContext(SocketContext);
   const editorRef = useRef(null);
   
@@ -77,7 +77,7 @@ const EditorComponent = ({ roomId, code, setCode, language, setLanguage }) => {
         height="100%"
         width="100%"
         language={language === 'c' || language === 'cpp' ? 'cpp' : language}
-        theme="vs-dark"
+        theme={theme || 'vs-dark'}
         value={code}
         onChange={handleEditorChange}
         onMount={handleEditorDidMount}

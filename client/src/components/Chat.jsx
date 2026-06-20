@@ -4,6 +4,33 @@ import { AuthContext } from '../context/AuthContext';
 import { Send, Smile, MessageSquare, ShieldAlert } from 'lucide-react';
 import EmojiPicker from 'emoji-picker-react';
 
+const playNotificationSound = () => {
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+    const audioContext = new AudioContextClass();
+    
+    const playTone = (freq, duration, startTime) => {
+      const osc = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, startTime);
+      gain.gain.setValueAtTime(0.05, startTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+      osc.connect(gain);
+      gain.connect(audioContext.destination);
+      osc.start(startTime);
+      osc.stop(startTime + duration);
+    };
+    
+    const now = audioContext.currentTime;
+    playTone(587.33, 0.1, now); // D5
+    playTone(880, 0.15, now + 0.08); // A5
+  } catch (err) {
+    console.warn('Audio feedback failed:', err);
+  }
+};
+
 const Chat = ({ roomId }) => {
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState('');
@@ -21,6 +48,11 @@ const Chat = ({ roomId }) => {
 
     const handleMessage = (msg) => {
       setMessages((prev) => [...prev, msg]);
+      
+      // Play a soft notification chime if message is from another team member
+      if (msg.username !== user.username) {
+        playNotificationSound();
+      }
     };
 
     socket.on('chat-history', handleHistory);
@@ -30,7 +62,7 @@ const Chat = ({ roomId }) => {
       socket.off('chat-history', handleHistory);
       socket.off('chat-message', handleMessage);
     };
-  }, [socket]);
+  }, [socket, user]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

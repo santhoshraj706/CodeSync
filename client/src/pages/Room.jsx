@@ -21,6 +21,7 @@ const Room = () => {
   const [isExecuting, setIsExecuting] = useState(false);
   const [code, setCode] = useState('// Write your code here...');
   const [language, setLanguage] = useState('javascript');
+  const [editorTheme, setEditorTheme] = useState('vs-dark');
 
   // Adjustable layout states
   const [leftWidth, setLeftWidth] = useState(280);
@@ -272,6 +273,15 @@ const Room = () => {
               <div className="flex items-center space-x-2 md:space-x-3">
                 <select
                   className="bg-slate-900/80 border border-white/10 text-white text-xs md:text-sm rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent block px-2 md:px-3 py-1.5 md:py-2 outline-none transition-all cursor-pointer hover:bg-slate-800"
+                  value={editorTheme}
+                  onChange={(e) => setEditorTheme(e.target.value)}
+                >
+                  <option value="vs-dark">Dark Theme</option>
+                  <option value="light">Light Theme</option>
+                  <option value="hc-black">High Contrast</option>
+                </select>
+                <select
+                  className="bg-slate-900/80 border border-white/10 text-white text-xs md:text-sm rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent block px-2 md:px-3 py-1.5 md:py-2 outline-none transition-all cursor-pointer hover:bg-slate-800"
                   value={language}
                   onChange={(e) => {
                     setLanguage(e.target.value);
@@ -299,7 +309,7 @@ const Room = () => {
           {/* Main Workspace */}
           <div className="flex-1 relative bg-[#0f111a] border border-white/10 z-10 overflow-hidden shadow-2xl">
             <div className={`absolute inset-0 ${activeTab === 'editor' ? 'block' : 'hidden'}`}>
-              <EditorComponent roomId={roomId} code={code} setCode={setCode} language={language} setLanguage={setLanguage} />
+              <EditorComponent roomId={roomId} code={code} setCode={setCode} language={language} setLanguage={setLanguage} theme={editorTheme} />
             </div>
             <div className={`absolute inset-0 ${activeTab === 'whiteboard' ? 'block' : 'hidden'}`}>
               <Whiteboard roomId={roomId} isVisible={activeTab === 'whiteboard'} />

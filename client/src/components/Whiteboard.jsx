@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useContext, useCallback } from 'react';
 import { SocketContext } from '../context/SocketContext';
-import { Trash2, Pen, Eraser, Undo2, Circle, Square, Minus, Type, FileText } from 'lucide-react';
+import { Trash2, Pen, Eraser, Undo2, Circle, Square, Minus, Type, FileText, Download } from 'lucide-react';
 
 const COLORS = [
   '#FFFFFF', '#FF6B6B', '#FFE66D', '#4ECDC4', '#45B7D1',
@@ -500,6 +500,87 @@ const Whiteboard = ({ roomId, isVisible }) => {
     });
   };
 
+  // Download entire whiteboard with sticky notes rendered on top
+  const handleDownload = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    // Create a temporary canvas matching the current dimensions of the whiteboard
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = canvas.width;
+    tempCanvas.height = canvas.height;
+    const tempCtx = tempCanvas.getContext('2d');
+
+    // Draw dark slate board background
+    tempCtx.fillStyle = '#0f111a';
+    tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+    // Draw existing canvas drawings
+    tempCtx.drawImage(canvas, 0, 0);
+
+    // Draw sticky notes on top of drawings
+    notes.forEach(note => {
+      const leftPos = toActualX(note.x0, canvasSize.width);
+      const topPos = toActualY(note.y0, canvasSize.height);
+      const noteW = 208; // width 52 in tailwind is 13rem = 208px
+      const noteH = 130;
+
+      tempCtx.save();
+      tempCtx.fillStyle = note.color;
+
+      // Draw rounded card body
+      tempCtx.beginPath();
+      if (tempCtx.roundRect) {
+        tempCtx.roundRect(leftPos, topPos, noteW, noteH, 16);
+      } else {
+        tempCtx.rect(leftPos, topPos, noteW, noteH);
+      }
+      tempCtx.fill();
+
+      // Draw header separator line
+      tempCtx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+      tempCtx.fillRect(leftPos, topPos + 24, noteW, 1);
+
+      // Draw three tiny binder holes on note header
+      tempCtx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+      tempCtx.beginPath();
+      tempCtx.arc(leftPos + 16, topPos + 12, 2.5, 0, 2 * Math.PI);
+      tempCtx.arc(leftPos + 26, topPos + 12, 2.5, 0, 2 * Math.PI);
+      tempCtx.arc(leftPos + 36, topPos + 12, 2.5, 0, 2 * Math.PI);
+      tempCtx.fill();
+
+      // Render note text content
+      tempCtx.fillStyle = getContrastColor(note.color);
+      tempCtx.font = "bold 11px 'Inter', sans-serif";
+
+      const words = (note.text || '').split(' ');
+      let line = '';
+      let y = topPos + 42;
+      const lineHeight = 16;
+      const maxWidth = noteW - 24;
+
+      for (let n = 0; n < words.length; n++) {
+        let testLine = line + words[n] + ' ';
+        let metrics = tempCtx.measureText(testLine);
+        if (metrics.width > maxWidth && n > 0) {
+          tempCtx.fillText(line, leftPos + 12, y);
+          line = words[n] + ' ';
+          y += lineHeight;
+        } else {
+          line = testLine;
+        }
+      }
+      tempCtx.fillText(line, leftPos + 12, y);
+      tempCtx.restore();
+    });
+
+    // Download image link trigger
+    const link = document.createElement('a');
+    link.download = `codesync-board-${roomId}-${Date.now()}.png`;
+    link.href = tempCanvas.toDataURL('image/png');
+    link.click();
+  };
+
   const ToolButton = ({ icon: Icon, toolName, label }) => (
     <button
       onClick={() => setTool(toolName)}
@@ -618,6 +699,14 @@ const Whiteboard = ({ roomId, isVisible }) => {
           disabled={undoStack.length === 0}
         >
           <Undo2 className="w-4 h-4" />
+        </button>
+
+        <button
+          onClick={handleDownload}
+          className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-white transition-all duration-200 border border-emerald-500/20 hover:border-emerald-400 hover:shadow-[0_0_15px_rgba(16,185,129,0.4)] ml-1"
+          title="Download Board as PNG"
+        >
+          <Download className="w-4 h-4" />
         </button>
 
         <button

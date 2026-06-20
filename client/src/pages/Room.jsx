@@ -7,6 +7,7 @@ import Chat from '../components/Chat';
 import Whiteboard from '../components/Whiteboard';
 import OutputWindow from '../components/OutputWindow';
 import api from '../utils/api';
+import confetti from 'canvas-confetti';
 import { Users, Code, PenTool, Play, LogOut, Copy, Hash, MessageSquare, Terminal, Download, Wifi, WifiOff, CheckCircle2, AlertCircle, Keyboard, X } from 'lucide-react';
 
 const Room = () => {
@@ -125,6 +126,32 @@ const Room = () => {
     };
   }, [roomId, user, socket]);
 
+  const triggerSuccessConfetti = () => {
+    const duration = 2000;
+    const animationEnd = Date.now() + duration;
+    const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+
+    const randomInRange = (min, max) => Math.random() * (max - min) + min;
+
+    const interval = setInterval(function() {
+      const timeLeft = animationEnd - Date.now();
+
+      if (timeLeft <= 0) {
+        return clearInterval(interval);
+      }
+
+      const particleCount = 50 * (timeLeft / duration);
+      confetti({
+        ...defaults, particleCount,
+        origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 }
+      });
+      confetti({
+        ...defaults, particleCount,
+        origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 }
+      });
+    }, 250);
+  };
+
   const handleRunCode = async () => {
     setIsExecuting(true);
     try {
@@ -134,7 +161,12 @@ const Room = () => {
         stdin: ''
       });
       setOutput(res.data);
-      showToast('Code executed successfully', 'success');
+      if (!res.data.stderr) {
+        triggerSuccessConfetti();
+        showToast('Code executed successfully', 'success');
+      } else {
+        showToast('Executed with warnings/errors', 'error');
+      }
     } catch (err) {
       console.error(err);
       const errorMsg = err.response?.data?.message || err.response?.data?.error || 'Execution Failed';

@@ -27,8 +27,8 @@ const Signup = () => {
   return (
     <div className="flex items-center justify-center min-h-screen bg-animated-gradient relative">
       {/* Decorative background elements */}
-      <div className="absolute top-1/4 right-1/4 w-64 h-64 bg-emerald-500/20 rounded-full blur-[100px] pointer-events-none"></div>
-      <div className="absolute bottom-1/4 left-1/4 w-80 h-80 bg-teal-600/20 rounded-full blur-[120px] pointer-events-none"></div>
+      <div className="absolute top-1/4 right-1/4 w-64 h-64 bg-emerald-500/20 rounded-full blur-[100px] pointer-events-none animate-blob"></div>
+      <div className="absolute bottom-1/4 left-1/4 w-80 h-80 bg-teal-600/20 rounded-full blur-[120px] pointer-events-none animate-blob" style={{ animationDelay: '3s' }}></div>
 
       <div className="p-10 sm:p-12 glass-panel rounded-[2rem] w-full max-w-[440px] mx-4 animate-fadeIn shadow-[0_0_40px_rgba(0,0,0,0.5)] border border-white/10">
         <div className="flex flex-col items-center mb-10">

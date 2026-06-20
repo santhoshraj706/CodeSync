@@ -10,6 +10,15 @@ const COLORS = [
 
 const BRUSH_SIZES = [2, 4, 6, 10, 16];
 
+// Unified Virtual coordinate space dimensions (16:9 ratio)
+const VIRTUAL_WIDTH = 1920;
+const VIRTUAL_HEIGHT = 1080;
+
+const toVirtualX = (actualX, canvasWidth) => (actualX / canvasWidth) * VIRTUAL_WIDTH;
+const toVirtualY = (actualY, canvasHeight) => (actualY / canvasHeight) * VIRTUAL_HEIGHT;
+const toActualX = (virtualX, canvasWidth) => (virtualX / VIRTUAL_WIDTH) * canvasWidth;
+const toActualY = (virtualY, canvasHeight) => (virtualY / VIRTUAL_HEIGHT) * canvasHeight;
+
 // Helper to check if a color is light or dark (for text contrast on sticky notes)
 const getContrastColor = (hexColor) => {
   if (!hexColor) return '#000000';
@@ -35,6 +44,9 @@ const Whiteboard = ({ roomId, isVisible }) => {
   const [undoStack, setUndoStack] = useState([]);
   const lastPosRef = useRef({ x: 0, y: 0 });
   const strokesRef = useRef([]);
+
+  // Track canvas size in state to trigger React re-renders for absolute elements (like Sticky Notes)
+  const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
 
   // Modal Form state for Text tool
   const [textInsertCoords, setTextInsertCoords] = useState(null); // { x, y }
@@ -119,11 +131,11 @@ const Whiteboard = ({ roomId, isVisible }) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
     strokesRef.current.forEach((s) => drawStroke(s, ctx));
   };
 
-  // Socket listeners — registered ONCE, never depend on visibility
+  // Socket listeners — registered ONCE
   useEffect(() => {
     if (!socket) return;
 
@@ -134,7 +146,7 @@ const Whiteboard = ({ roomId, isVisible }) => {
       const canvas = canvasRef.current;
       if (canvas && canvas.width > 0) {
         const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
         strokesRef.current.forEach((s) => drawStroke(s, ctx));
       }
     };
@@ -166,7 +178,7 @@ const Whiteboard = ({ roomId, isVisible }) => {
       const canvas = canvasRef.current;
       if (canvas) {
         const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
       }
       setUndoStack([]);
     };
@@ -182,53 +194,40 @@ const Whiteboard = ({ roomId, isVisible }) => {
     };
   }, [socket]);
 
-  // Resize canvas and redraw when tab becomes visible
+  // Use ResizeObserver to detect parent panel resize (handles resizable panels & window resize)
   useEffect(() => {
-    if (!isVisible) return;
+    const canvas = canvasRef.current;
+    if (!canvas || !canvas.parentElement) return;
 
-    // Small delay to let the DOM update display
-    const timer = setTimeout(() => {
-      const canvas = canvasRef.current;
-      if (!canvas || !canvas.parentElement) return;
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        const { width, height } = entry.contentRect;
+        if (width === 0 || height === 0) continue;
 
-      const parentW = canvas.parentElement.clientWidth;
-      const parentH = canvas.parentElement.clientHeight;
-      if (parentW === 0 || parentH === 0) return;
+        // Set canvas dimensions
+        canvas.width = width;
+        canvas.height = height;
 
-      canvas.width = parentW;
-      canvas.height = parentH;
+        // Update state to trigger re-positioning of sticky notes
+        setCanvasSize({ width, height });
 
-      const ctx = canvas.getContext('2d');
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      contextRef.current = ctx;
+        // Configure context with scale factor
+        const ctx = canvas.getContext('2d');
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.scale(width / VIRTUAL_WIDTH, height / VIRTUAL_HEIGHT);
+        contextRef.current = ctx;
 
-      // Redraw all stored strokes
-      strokesRef.current.forEach((s) => drawStroke(s, ctx));
-    }, 50);
+        // Redraw all strokes
+        redrawAll();
+      }
+    });
 
-    return () => clearTimeout(timer);
-  }, [isVisible]);
+    resizeObserver.observe(canvas.parentElement);
 
-  // Handle window resize
-  useEffect(() => {
-    const handleResize = () => {
-      const canvas = canvasRef.current;
-      if (!canvas || !canvas.parentElement) return;
-      if (canvas.parentElement.clientWidth === 0) return;
-
-      canvas.width = canvas.parentElement.clientWidth;
-      canvas.height = canvas.parentElement.clientHeight;
-
-      const ctx = canvas.getContext('2d');
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      contextRef.current = ctx;
-      redrawAll();
+    return () => {
+      resizeObserver.disconnect();
     };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   const emitDraw = (drawData) => {
@@ -254,56 +253,73 @@ const Whiteboard = ({ roomId, isVisible }) => {
     setUndoStack(s => s.slice(0, -1));
     const img = new Image();
     img.onload = () => {
+      ctx.save();
+      // Reset transform temporarily to draw full background snapshot
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0);
+      ctx.restore();
     };
     img.src = prev;
   };
 
   const handleMouseDown = (e) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const actualX = e.clientX - rect.left;
+    const actualY = e.clientY - rect.top;
+    const virtualX = toVirtualX(actualX, canvasSize.width);
+    const virtualY = toVirtualY(actualY, canvasSize.height);
+
     if (tool === 'text') {
-      const { offsetX, offsetY } = e.nativeEvent;
-      setTextInsertCoords({ x: offsetX, y: offsetY });
+      setTextInsertCoords({ x: virtualX, y: virtualY });
       return;
     }
 
     if (tool === 'note') {
-      const { offsetX, offsetY } = e.nativeEvent;
       const noteId = Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9);
-      const noteColor = color === '#FFFFFF' ? '#FFE66D' : color; // fallback to yellow if drawing color is white
+      const noteColor = color === '#FFFFFF' ? '#FFE66D' : color; // fallback to yellow if color is white
       const defaultText = '';
       
-      setNotes(prev => [...prev, { id: noteId, x0: offsetX, y0: offsetY, text: defaultText, color: noteColor }]);
+      setNotes(prev => [...prev, { id: noteId, x0: virtualX, y0: virtualY, text: defaultText, color: noteColor }]);
       emitDraw({
         type: 'stickynote',
         action: 'create',
         id: noteId,
-        x0: offsetX,
-        y0: offsetY,
+        x0: virtualX,
+        y0: virtualY,
         text: defaultText,
         strokeColor: noteColor
       });
       return;
     }
 
-    const { offsetX, offsetY } = e.nativeEvent;
     saveUndo();
 
     if (tool === 'rect' || tool === 'circle' || tool === 'straightline') {
-      setShapeStart({ x: offsetX, y: offsetY });
-      const canvas = canvasRef.current;
+      setShapeStart({ x: virtualX, y: virtualY });
       setSnapshotData(canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height));
     }
 
-    setLastPos({ x: offsetX, y: offsetY });
-    lastPosRef.current = { x: offsetX, y: offsetY };
+    setLastPos({ x: virtualX, y: virtualY });
+    lastPosRef.current = { x: virtualX, y: virtualY };
     setIsDrawing(true);
   };
 
   const handleMouseMove = (e) => {
     if (!isDrawing) return;
-    const { offsetX, offsetY } = e.nativeEvent;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const actualX = e.clientX - rect.left;
+    const actualY = e.clientY - rect.top;
+    const virtualX = toVirtualX(actualX, canvasSize.width);
+    const virtualY = toVirtualY(actualY, canvasSize.height);
     const ctx = contextRef.current;
+    if (!ctx) return;
 
     if (tool === 'pen') {
       const prev = lastPosRef.current;
@@ -312,13 +328,13 @@ const Whiteboard = ({ roomId, isVisible }) => {
       ctx.lineWidth = brushSize;
       ctx.beginPath();
       ctx.moveTo(prev.x, prev.y);
-      ctx.lineTo(offsetX, offsetY);
+      ctx.lineTo(virtualX, virtualY);
       ctx.stroke();
       ctx.closePath();
       ctx.restore();
-      emitDraw({ type: 'pen', x0: prev.x, y0: prev.y, x1: offsetX, y1: offsetY, strokeColor: color, lineWidth: brushSize });
-      lastPosRef.current = { x: offsetX, y: offsetY };
-      setLastPos({ x: offsetX, y: offsetY });
+      emitDraw({ type: 'pen', x0: prev.x, y0: prev.y, x1: virtualX, y1: virtualY, strokeColor: color, lineWidth: brushSize });
+      lastPosRef.current = { x: virtualX, y: virtualY };
+      setLastPos({ x: virtualX, y: virtualY });
     } else if (tool === 'eraser') {
       const prev = lastPosRef.current;
       ctx.save();
@@ -326,35 +342,37 @@ const Whiteboard = ({ roomId, isVisible }) => {
       ctx.lineWidth = brushSize * 3;
       ctx.beginPath();
       ctx.moveTo(prev.x, prev.y);
-      ctx.lineTo(offsetX, offsetY);
+      ctx.lineTo(virtualX, virtualY);
       ctx.stroke();
       ctx.closePath();
       ctx.globalCompositeOperation = 'source-over';
       ctx.restore();
-      emitDraw({ type: 'eraser', x0: prev.x, y0: prev.y, x1: offsetX, y1: offsetY, strokeColor: color, lineWidth: brushSize * 3 });
-      lastPosRef.current = { x: offsetX, y: offsetY };
-      setLastPos({ x: offsetX, y: offsetY });
+      emitDraw({ type: 'eraser', x0: prev.x, y0: prev.y, x1: virtualX, y1: virtualY, strokeColor: color, lineWidth: brushSize * 3 });
+      lastPosRef.current = { x: virtualX, y: virtualY };
+      setLastPos({ x: virtualX, y: virtualY });
     } else if ((tool === 'rect' || tool === 'circle' || tool === 'straightline') && shapeStart && snapshotData) {
-      const canvas = canvasRef.current;
-      ctx.putImageData(snapshotData, 0, 0);
+      // Restore previous snapshot first
+      const rawCtx = canvas.getContext('2d');
+      rawCtx.putImageData(snapshotData, 0, 0);
+
       ctx.save();
       ctx.strokeStyle = color;
       ctx.lineWidth = brushSize;
 
       if (tool === 'rect') {
-        ctx.strokeRect(shapeStart.x, shapeStart.y, offsetX - shapeStart.x, offsetY - shapeStart.y);
+        ctx.strokeRect(shapeStart.x, shapeStart.y, virtualX - shapeStart.x, virtualY - shapeStart.y);
       } else if (tool === 'circle') {
-        const rx = Math.abs(offsetX - shapeStart.x) / 2;
-        const ry = Math.abs(offsetY - shapeStart.y) / 2;
-        const cx = (shapeStart.x + offsetX) / 2;
-        const cy = (shapeStart.y + offsetY) / 2;
+        const rx = Math.abs(virtualX - shapeStart.x) / 2;
+        const ry = Math.abs(virtualY - shapeStart.y) / 2;
+        const cx = (shapeStart.x + virtualX) / 2;
+        const cy = (shapeStart.y + virtualY) / 2;
         ctx.beginPath();
         ctx.ellipse(cx, cy, rx, ry, 0, 0, 2 * Math.PI);
         ctx.stroke();
       } else if (tool === 'straightline') {
         ctx.beginPath();
         ctx.moveTo(shapeStart.x, shapeStart.y);
-        ctx.lineTo(offsetX, offsetY);
+        ctx.lineTo(virtualX, virtualY);
         ctx.stroke();
       }
       ctx.restore();
@@ -363,15 +381,22 @@ const Whiteboard = ({ roomId, isVisible }) => {
 
   const handleMouseUp = (e) => {
     if (!isDrawing) return;
-    const { offsetX, offsetY } = e.nativeEvent;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const actualX = e.clientX - rect.left;
+    const actualY = e.clientY - rect.top;
+    const virtualX = toVirtualX(actualX, canvasSize.width);
+    const virtualY = toVirtualY(actualY, canvasSize.height);
 
     if ((tool === 'rect' || tool === 'circle' || tool === 'straightline') && shapeStart) {
       emitDraw({
         type: tool,
         x0: shapeStart.x,
         y0: shapeStart.y,
-        x1: offsetX,
-        y1: offsetY,
+        x1: virtualX,
+        y1: virtualY,
         strokeColor: color,
         lineWidth: brushSize
       });
@@ -387,7 +412,7 @@ const Whiteboard = ({ roomId, isVisible }) => {
     const canvas = canvasRef.current;
     if (canvas) {
       const ctx = canvas.getContext('2d');
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
     }
     setUndoStack([]);
     if (emit && socket) {
@@ -398,42 +423,54 @@ const Whiteboard = ({ roomId, isVisible }) => {
   // Dragging logic for Sticky Notes
   const handleNoteDragStart = (e, noteId) => {
     e.stopPropagation();
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
     const note = notes.find(n => n.id === noteId);
     if (!note) return;
     
-    const startX = e.clientX - note.x0;
-    const startY = e.clientY - note.y0;
+    const actualX0 = toActualX(note.x0, canvasSize.width);
+    const actualY0 = toActualY(note.y0, canvasSize.height);
 
-    const handleMouseMove = (moveEvent) => {
-      const newX = moveEvent.clientX - startX;
-      const newY = moveEvent.clientY - startY;
-      setNotes(prev => prev.map(n => n.id === noteId ? { ...n, x0: newX, y0: newY } : n));
+    const startX = e.clientX - actualX0;
+    const startY = e.clientY - actualY0;
+
+    const handleMouseMoveNote = (moveEvent) => {
+      const actualNewX = moveEvent.clientX - startX;
+      const actualNewY = moveEvent.clientY - startY;
+
+      const virtualNewX = toVirtualX(actualNewX, canvasSize.width);
+      const virtualNewY = toVirtualY(actualNewY, canvasSize.height);
+
+      setNotes(prev => prev.map(n => n.id === noteId ? { ...n, x0: virtualNewX, y0: virtualNewY } : n));
     };
 
-    const handleMouseUp = (upEvent) => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+    const handleMouseUpNote = (upEvent) => {
+      document.removeEventListener('mousemove', handleMouseMoveNote);
+      document.removeEventListener('mouseup', handleMouseUpNote);
 
-      const finalX = upEvent.clientX - startX;
-      const finalY = upEvent.clientY - startY;
+      const actualNewX = upEvent.clientX - startX;
+      const actualNewY = upEvent.clientY - startY;
 
-      // Sync position update via socket
+      const virtualNewX = toVirtualX(actualNewX, canvasSize.width);
+      const virtualNewY = toVirtualY(actualNewY, canvasSize.height);
+
       const currentNote = notes.find(n => n.id === noteId);
       if (currentNote) {
         emitDraw({
           type: 'stickynote',
           action: 'update',
           id: noteId,
-          x0: finalX,
-          y0: finalY,
+          x0: virtualNewX,
+          y0: virtualNewY,
           text: currentNote.text,
           strokeColor: currentNote.color
         });
       }
     };
 
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener('mousemove', handleMouseMoveNote);
+    document.addEventListener('mouseup', handleMouseUpNote);
   };
 
   // Sync content edits
@@ -484,12 +521,15 @@ const Whiteboard = ({ roomId, isVisible }) => {
       <div className="absolute inset-0 pointer-events-none z-20">
         {notes.map((note) => {
           const fontColor = getContrastColor(note.color);
+          const leftPos = toActualX(note.x0, canvasSize.width);
+          const topPos = toActualY(note.y0, canvasSize.height);
+
           return (
             <div
               key={note.id}
               style={{
-                left: `${note.x0}px`,
-                top: `${note.y0}px`,
+                left: `${leftPos}px`,
+                top: `${topPos}px`,
                 backgroundColor: note.color,
                 color: fontColor
               }}
@@ -526,7 +566,7 @@ const Whiteboard = ({ roomId, isVisible }) => {
         })}
       </div>
 
-      <div className="absolute top-4 left-4 z-30 flex items-center gap-2 glass-panel p-2 rounded-2xl border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
+      <div className="absolute top-4 left-4 z-30 flex items-center gap-2 glass-panel p-2 rounded-2xl border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex-wrap">
         <ToolButton icon={Pen} toolName="pen" label="Pen" />
         <ToolButton icon={Eraser} toolName="eraser" label="Eraser" />
         <ToolButton icon={Minus} toolName="straightline" label="Line" />

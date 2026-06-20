@@ -1,44 +1,75 @@
-import React, { useEffect, useRef, useContext } from 'react';
+import React, { useEffect, useRef, useContext, useCallback } from 'react';
 import MonacoEditor from '@monaco-editor/react';
 import { SocketContext } from '../context/SocketContext';
 
 const EditorComponent = ({ roomId, code, setCode, language, setLanguage }) => {
   const socket = useContext(SocketContext);
-  const isTypingRef = useRef(false);
+  const editorRef = useRef(null);
+  
+  // Keep track of the latest code value (either received from remote or sent locally)
+  const latestCodeRef = useRef(code);
 
+  // Initialize/sync latestCodeRef when room changes
+  useEffect(() => {
+    latestCodeRef.current = code;
+  }, [roomId]);
+
+  // Register socket listeners ONCE — no dependency on `code`
   useEffect(() => {
     if (!socket) return;
 
-    socket.on('code-sync', ({ code: newCode }) => {
-      // Only update if we aren't currently typing to prevent loops
-      if (newCode !== code) {
-        setCode(newCode);
+    const handleCodeSync = ({ code: newCode }) => {
+      const targetCode = newCode ?? '';
+      if (targetCode !== latestCodeRef.current) {
+        latestCodeRef.current = targetCode;
+        setCode(targetCode);
       }
-    });
+    };
 
-    socket.on('language-sync', ({ language: newLang }) => {
+    const handleLanguageSync = ({ language: newLang }) => {
       setLanguage(newLang);
-    });
+    };
 
-    socket.on('room-state', ({ code: initCode, language: initLang }) => {
-      if (initCode) setCode(initCode);
+    const handleRoomState = ({ code: initCode, language: initLang }) => {
+      if (initCode !== undefined && initCode !== null) {
+        if (initCode !== latestCodeRef.current) {
+          latestCodeRef.current = initCode;
+          setCode(initCode);
+        }
+      }
       if (initLang) setLanguage(initLang);
-    });
+    };
+
+    socket.on('code-sync', handleCodeSync);
+    socket.on('language-sync', handleLanguageSync);
+    socket.on('room-state', handleRoomState);
 
     return () => {
-      socket.off('code-sync');
-      socket.off('language-sync');
-      socket.off('room-state');
+      socket.off('code-sync', handleCodeSync);
+      socket.off('language-sync', handleLanguageSync);
+      socket.off('room-state', handleRoomState);
     };
-  }, [socket, code, setCode, setLanguage]);
+  }, [socket, setCode, setLanguage]);
 
-  const handleEditorChange = (value) => {
-    setCode(value);
-    // Send to socket
-    if (socket) {
-      socket.emit('code-change', { roomId, code: value });
+  const handleEditorChange = useCallback((value) => {
+    const val = value ?? '';
+    // If the value is identical to the last synced/sent code, ignore it (prevents echo loops)
+    if (val === latestCodeRef.current) {
+      return;
     }
-  };
+
+    latestCodeRef.current = val;
+    setCode(val);
+    
+    // Broadcast to other users immediately
+    if (socket) {
+      socket.emit('code-change', { roomId, code: val });
+    }
+  }, [socket, roomId, setCode]);
+
+  const handleEditorDidMount = useCallback((editor) => {
+    editorRef.current = editor;
+  }, []);
 
   return (
     <div className="w-full h-full">
@@ -49,6 +80,7 @@ const EditorComponent = ({ roomId, code, setCode, language, setLanguage }) => {
         theme="vs-dark"
         value={code}
         onChange={handleEditorChange}
+        onMount={handleEditorDidMount}
         options={{
           minimap: { enabled: false },
           fontSize: 14,

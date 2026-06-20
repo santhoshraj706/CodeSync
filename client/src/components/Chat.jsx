@@ -15,17 +15,20 @@ const Chat = ({ roomId }) => {
   useEffect(() => {
     if (!socket) return;
 
-    socket.on('chat-history', (history) => {
+    const handleHistory = (history) => {
       setMessages(history);
-    });
+    };
 
-    socket.on('chat-message', (msg) => {
+    const handleMessage = (msg) => {
       setMessages((prev) => [...prev, msg]);
-    });
+    };
+
+    socket.on('chat-history', handleHistory);
+    socket.on('chat-message', handleMessage);
 
     return () => {
-      socket.off('chat-history');
-      socket.off('chat-message');
+      socket.off('chat-history', handleHistory);
+      socket.off('chat-message', handleMessage);
     };
   }, [socket]);
 
@@ -44,6 +47,10 @@ const Chat = ({ roomId }) => {
       timestamp: new Date().toISOString()
     };
 
+    // Add message locally immediately for instant feedback
+    setMessages((prev) => [...prev, { message: newMsg.message, username: newMsg.username, timestamp: newMsg.timestamp }]);
+
+    // Emit to server (server broadcasts to OTHER clients only)
     socket.emit('chat-message', newMsg);
     setMessage('');
     setShowEmoji(false);

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { AuthContext } from './AuthContext';
 
@@ -7,16 +7,43 @@ export const SocketContext = createContext();
 export const SocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
   const { user } = useContext(AuthContext);
+  const socketRef = useRef(null);
 
   useEffect(() => {
     if (user) {
-      const newSocket = io('http://localhost:5000');
+      const newSocket = io(import.meta.env.VITE_SERVER_URL || 'http://localhost:5000', {
+        reconnection: true,
+        reconnectionAttempts: Infinity,
+        reconnectionDelay: 500,
+        reconnectionDelayMax: 3000,
+        timeout: 10000,
+        transports: ['websocket', 'polling'],
+      });
+
+      newSocket.on('connect', () => {
+        console.log('[Socket] Connected:', newSocket.id);
+      });
+
+      newSocket.on('reconnect', (attemptNumber) => {
+        console.log('[Socket] Reconnected after', attemptNumber, 'attempts');
+        // The Room component will re-emit join-room on socket change
+      });
+
+      newSocket.on('disconnect', (reason) => {
+        console.log('[Socket] Disconnected:', reason);
+      });
+
+      socketRef.current = newSocket;
       setSocket(newSocket);
 
-      return () => newSocket.close();
+      return () => {
+        newSocket.close();
+        socketRef.current = null;
+      };
     } else {
-      if (socket) {
-        socket.close();
+      if (socketRef.current) {
+        socketRef.current.close();
+        socketRef.current = null;
         setSocket(null);
       }
     }

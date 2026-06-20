@@ -87,7 +87,15 @@ const Room = () => {
   useEffect(() => {
     if (!user || !socket) return;
 
-    socket.emit('join-room', { roomId, username: user.username });
+    const joinRoom = () => {
+      socket.emit('join-room', { roomId, username: user.username });
+    };
+
+    // Join immediately
+    joinRoom();
+
+    // Re-join on reconnection so we get fresh state from server
+    socket.on('connect', joinRoom);
 
     socket.on('active-users', (users) => {
       setActiveUsers(users.filter(u => u.socketId !== socket.id));
@@ -96,6 +104,7 @@ const Room = () => {
     return () => {
       socket.emit('leave-room', { roomId, username: user.username });
       socket.off('active-users');
+      socket.off('connect', joinRoom);
     };
   }, [roomId, user, socket]);
 

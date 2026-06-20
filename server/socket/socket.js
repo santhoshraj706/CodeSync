@@ -6,17 +6,19 @@ const socketHandler = (io) => {
   io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
 
+    let currentRoomId = null;
     let currentUsername = 'A user';
 
     socket.on('join-room', async ({ roomId, username }) => {
+      currentRoomId = roomId;
       currentUsername = username;
       socket.join(roomId);
 
       // Track active socket connections in memory
       if (!roomUsers[roomId]) roomUsers[roomId] = [];
-      if (!roomUsers[roomId].find(u => u.socketId === socket.id)) {
-        roomUsers[roomId].push({ username, socketId: socket.id });
-      }
+      // Remove any stale entry for this socket first
+      roomUsers[roomId] = roomUsers[roomId].filter(u => u.socketId !== socket.id);
+      roomUsers[roomId].push({ username, socketId: socket.id });
 
       // Broadcast full active users list to EVERYONE in the room
       io.to(roomId).emit('active-users', roomUsers[roomId]);
@@ -25,6 +27,7 @@ const socketHandler = (io) => {
       try {
         const room = await Room.findOne({ roomId });
         if (room) {
+          // Send current code state immediately
           socket.emit('room-state', {
             code: room.lastCode,
             language: room.language
@@ -47,8 +50,11 @@ const socketHandler = (io) => {
       console.log(`${username} joined room ${roomId}`);
     });
 
+    // Code change — broadcast to others + persist immediately
     socket.on('code-change', ({ roomId, code }) => {
+      // Broadcast to all OTHER clients immediately
       socket.to(roomId).emit('code-sync', { code });
+      // Persist with last-write-wins
       Room.updateOne({ roomId }, { lastCode: code }).catch(err => console.error(err));
     });
 
@@ -57,6 +63,7 @@ const socketHandler = (io) => {
       Room.updateOne({ roomId }, { language }).catch(err => console.error(err));
     });
 
+    // Chat message — broadcast to ALL (including sender) for consistency
     socket.on('chat-message', async ({ roomId, message, username, timestamp }) => {
       const msgObj = { message, username, timestamp };
 
@@ -77,7 +84,8 @@ const socketHandler = (io) => {
         console.error('Error saving message:', err);
       }
 
-      io.to(roomId).emit('chat-message', msgObj);
+      // Broadcast to all OTHER clients (sender handles its own message locally)
+      socket.to(roomId).emit('chat-message', msgObj);
     });
 
     socket.on('whiteboard-draw', async ({ roomId, drawData }) => {
@@ -91,6 +99,7 @@ const socketHandler = (io) => {
         console.error('Error saving stroke:', err);
       }
 
+      // Broadcast to all OTHER clients immediately
       socket.to(roomId).emit('whiteboard-draw', { drawData });
     });
 
@@ -112,6 +121,7 @@ const socketHandler = (io) => {
         // Broadcast updated list to everyone remaining
         io.to(roomId).emit('active-users', roomUsers[roomId]);
       }
+      currentRoomId = null;
       console.log(`${username} left room ${roomId}`);
     });
 

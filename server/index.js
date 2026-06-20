@@ -26,6 +26,10 @@ const io = new Server(server, {
 });
 
 socketHandler(io);
+// Health check route
+app.get('/', (req, res) => {
+  res.json({ status: 'ok', message: 'CodeSync Backend is running 🚀' });
+});
 
 // Health check route
 app.get('/', (req, res) => {

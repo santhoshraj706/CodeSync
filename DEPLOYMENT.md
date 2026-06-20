@@ -30,9 +30,9 @@ Render is ideal for Node.js backend servers using WebSockets (Socket.io) because
 ### Step 3: Add Environment Variables
 Under the **Environment** tab, click **Add Environment Variable** and insert:
 *   `PORT` = `5000`
-*   `MONGO_URI` = `mongodb+srv://santhoshrajtce_db_user:ihDI7OxzsuYIpRPE@cluster0.sq4fsjw.mongodb.net/?appName=Cluster0` *(Note: Whitelist Render IPs on MongoDB Atlas or add `0.0.0.0/0` in Atlas Network Access)*
-*   `JWT_SECRET` = `super_secret_key_123_456_789`
-*   `JUDGE0_API_KEY` = `your_judge0_api_key_here`
+*   `MONGO_URI` = `your_mongodb_atlas_connection_string`
+*   `JWT_SECRET` = `your_jwt_secret_key`
+*   `JUDGE0_API_KEY` = *(optional, not used currently)*
 
 ### Step 4: Deploy
 Click **Deploy Web Service**. Once deployment completes, copy the generated service URL (e.g., `https://codesync-backend.onrender.com`).

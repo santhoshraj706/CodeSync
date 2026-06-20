@@ -27,6 +27,11 @@ const io = new Server(server, {
 
 socketHandler(io);
 
+// Health check route
+app.get('/', (req, res) => {
+  res.json({ status: 'ok', message: 'CodeSync Backend is running 🚀' });
+});
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/rooms', roomRoutes);

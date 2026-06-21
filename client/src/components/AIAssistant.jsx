@@ -168,7 +168,7 @@ const AIAssistant = ({ code, language, chatMessages, onInsertCode, onClose }) =>
   const activeModeMeta = modes.find(m => m.id === activeMode);
 
   return (
-    <div className="flex flex-col h-full bg-slate-950/80 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+    <div className="flex flex-col h-full bg-slate-950 border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
       {/* Header */}
       <div className="p-4 border-b border-white/10 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 shrink-0">
         <div className="flex items-center justify-between mb-3">

@@ -1,12 +1,11 @@
 import React, { useEffect, useRef, useState, useContext, useCallback } from 'react';
 import MonacoEditor from '@monaco-editor/react';
 import { SocketContext } from '../context/SocketContext';
-import { Wand2, WrapText, Sparkles, Play, Loader2 } from 'lucide-react';
+import { Wand2, WrapText, Sparkles, Play, Loader2, Settings2 } from 'lucide-react';
 
-const EditorComponent = ({ roomId, code, setCode, language, setLanguage, theme, showToast, fontSize = 14, onRunCode, isExecuting, onToggleAI }) => {
+const EditorComponent = ({ roomId, code, setCode, language, setLanguage, theme, showToast, fontSize = 14, wordWrap = 'on', onRunCode, isExecuting, onToggleAI, onOpenSettings }) => {
   const socket = useContext(SocketContext);
   const editorRef = useRef(null);
-  const [wordWrap, setWordWrap] = useState('on');
   
   // Keep track of the latest code value (either received from remote or sent locally)
   const latestCodeRef = useRef(code);
@@ -79,10 +78,6 @@ const EditorComponent = ({ roomId, code, setCode, language, setLanguage, theme, 
     }
   };
 
-  const toggleWordWrap = () => {
-    setWordWrap(prev => prev === 'on' ? 'off' : 'on');
-  };
-
   const copyCode = () => {
     navigator.clipboard.writeText(code);
     if (showToast) {
@@ -136,12 +131,12 @@ const EditorComponent = ({ roomId, code, setCode, language, setLanguage, theme, 
           <span className="max-w-0 overflow-hidden group-hover/btn:max-w-xs group-hover/btn:ml-2 transition-all duration-300 ease-in-out whitespace-nowrap text-xs font-bold">Format</span>
         </button>
         <button
-          onClick={toggleWordWrap}
-          className={`${wordWrap === 'on' ? 'bg-slate-700/80 text-white' : 'bg-slate-800/80 text-slate-400'} hover:bg-slate-600/90 p-2 rounded-xl backdrop-blur-sm border border-white/10 shadow-lg transition-all hover:scale-105 group/btn flex items-center`}
-          title="Toggle Word Wrap"
+          onClick={onOpenSettings}
+          className="bg-blue-500/80 hover:bg-blue-500 text-white p-2 rounded-xl backdrop-blur-sm border border-blue-400/50 shadow-lg transition-all hover:scale-105 group/btn flex items-center"
+          title="Open Settings"
         >
-          <WrapText className="w-4 h-4" />
-          <span className="max-w-0 overflow-hidden group-hover/btn:max-w-xs group-hover/btn:ml-2 transition-all duration-300 ease-in-out whitespace-nowrap text-xs font-bold">Wrap</span>
+          <Settings2 className="w-4 h-4" />
+          <span className="max-w-0 overflow-hidden group-hover/btn:max-w-xs group-hover/btn:ml-2 transition-all duration-300 ease-in-out whitespace-nowrap text-xs font-bold">Settings</span>
         </button>
         <div className="w-px h-6 bg-white/20 mx-1"></div>
         <button

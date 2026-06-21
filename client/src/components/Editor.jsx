@@ -3,7 +3,7 @@ import MonacoEditor from '@monaco-editor/react';
 import { SocketContext } from '../context/SocketContext';
 import { Wand2, WrapText } from 'lucide-react';
 
-const EditorComponent = ({ roomId, code, setCode, language, setLanguage, theme, showToast }) => {
+const EditorComponent = ({ roomId, code, setCode, language, setLanguage, theme, showToast, fontSize = 14 }) => {
   const socket = useContext(SocketContext);
   const editorRef = useRef(null);
   const [wordWrap, setWordWrap] = useState('on');
@@ -102,7 +102,7 @@ const EditorComponent = ({ roomId, code, setCode, language, setLanguage, theme, 
         onMount={handleEditorDidMount}
         options={{
           minimap: { enabled: false },
-          fontSize: 14,
+          fontSize,
           wordWrap: wordWrap,
           automaticLayout: true,
           formatOnPaste: true,

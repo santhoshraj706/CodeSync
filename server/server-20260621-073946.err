@@ -1,0 +1,1 @@
+Error loading room state from MongoDB: Cannot call `rooms.findOne()` before initial connection is complete if `bufferCommands = false`. Make sure you `await mongoose.connect()` if you have `bufferCommands = false`.

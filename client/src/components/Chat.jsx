@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef, useContext } from 'react';
+import { useState, useEffect, useRef, useContext } from 'react';
 import { SocketContext } from '../context/SocketContext';
 import { AuthContext } from '../context/AuthContext';
-import { Send, Smile, MessageSquare, ShieldAlert } from 'lucide-react';
+import { Send, Smile, MessageSquare, Search, Volume2, VolumeX, Download, ArrowDown } from 'lucide-react';
 import EmojiPicker from 'emoji-picker-react';
 
 const playNotificationSound = () => {
@@ -35,6 +35,8 @@ const Chat = ({ roomId }) => {
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState('');
   const [showEmoji, setShowEmoji] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isMuted, setIsMuted] = useState(false);
   const socket = useContext(SocketContext);
   const { user } = useContext(AuthContext);
   const chatContainerRef = useRef(null);
@@ -50,7 +52,7 @@ const Chat = ({ roomId }) => {
       setMessages((prev) => [...prev, msg]);
       
       // Play a soft notification chime if message is from another team member
-      if (user && msg.username !== user.username) {
+      if (!isMuted && user && msg.username !== user.username) {
         playNotificationSound();
       }
     };
@@ -62,7 +64,7 @@ const Chat = ({ roomId }) => {
       socket.off('chat-history', handleHistory);
       socket.off('chat-message', handleMessage);
     };
-  }, [socket, user]);
+  }, [socket, user, isMuted]);
 
   useEffect(() => {
     if (chatContainerRef.current) {
@@ -97,6 +99,38 @@ const Chat = ({ roomId }) => {
     setMessage(prev => prev + emojiObject.emoji);
   };
 
+  const scrollToLatest = () => {
+    if (!chatContainerRef.current) return;
+    chatContainerRef.current.scrollTo({
+      top: chatContainerRef.current.scrollHeight,
+      behavior: 'smooth'
+    });
+  };
+
+  const exportChat = () => {
+    if (messages.length === 0) return;
+    const content = messages.map((msg) => {
+      const time = new Date(msg.timestamp).toLocaleString();
+      return `[${time}] ${msg.username}: ${msg.message}`;
+    }).join('\n');
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `codesync-chat-${roomId}-${Date.now()}.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const visibleMessages = messages.filter((msg) => {
+    const query = searchTerm.trim().toLowerCase();
+    if (!query) return true;
+    return (
+      msg.message?.toLowerCase().includes(query) ||
+      msg.username?.toLowerCase().includes(query)
+    );
+  });
+
   return (
     <div className="flex flex-col h-full bg-slate-950/40 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl relative">
       {/* Premium Header */}
@@ -113,6 +147,38 @@ const Chat = ({ roomId }) => {
             </div>
           </div>
         </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={exportChat}
+            disabled={messages.length === 0}
+            className="p-2 rounded-xl border bg-white/5 border-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-all disabled:opacity-30 disabled:hover:bg-white/5"
+            title="Export chat"
+          >
+            <Download className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsMuted(prev => !prev)}
+            className={`p-2 rounded-xl border transition-all ${isMuted ? 'bg-amber-500/10 border-amber-500/20 text-amber-300' : 'bg-white/5 border-white/5 text-slate-400 hover:text-white hover:bg-white/10'}`}
+            title={isMuted ? 'Unmute notifications' : 'Mute notifications'}
+          >
+            {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+          </button>
+        </div>
+      </div>
+
+      <div className="px-4 py-3 border-b border-white/5 bg-slate-950/30">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+          <input
+            type="search"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search messages..."
+            className="w-full rounded-xl bg-white/5 border border-white/10 focus:border-indigo-500/40 py-2 pl-9 pr-3 text-xs text-white placeholder-slate-500 outline-none focus:ring-1 focus:ring-indigo-500/30 transition-all"
+          />
+        </div>
       </div>
 
       {/* Message Area */}
@@ -126,8 +192,17 @@ const Chat = ({ roomId }) => {
               No messages yet. Send a message to start the collaborative discussion.
             </p>
           </div>
+        ) : visibleMessages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-center p-6 space-y-3">
+            <div className="p-3 bg-white/5 rounded-2xl border border-white/5 text-gray-400">
+              <Search className="w-6 h-6 opacity-40" />
+            </div>
+            <p className="text-xs text-gray-400 max-w-[200px] leading-relaxed">
+              No messages match your search.
+            </p>
+          </div>
         ) : (
-          messages.map((msg, idx) => {
+          visibleMessages.map((msg, idx) => {
             const isMe = msg.username === user.username;
             return (
               <div key={idx} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-fadeIn`}>
@@ -176,6 +251,16 @@ const Chat = ({ roomId }) => {
 
       {/* Typing Indicator & Input Form */}
       <div className="bg-slate-950/60 border-t border-white/10 relative z-40 backdrop-blur-xl">
+        {messages.length > 4 && (
+          <button
+            type="button"
+            onClick={scrollToLatest}
+            className="absolute -top-12 right-4 bg-slate-900/90 hover:bg-indigo-500 text-slate-300 hover:text-white border border-white/10 hover:border-indigo-400/40 rounded-full p-2 shadow-xl transition-all"
+            title="Jump to latest"
+          >
+            <ArrowDown className="w-4 h-4" />
+          </button>
+        )}
         {message.length > 0 && (
           <div className="absolute -top-6 left-4 flex items-center gap-2 text-[10px] text-indigo-300 font-medium animate-fadeIn">
             <div className="flex space-x-0.5">

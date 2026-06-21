@@ -1,8 +1,26 @@
-import React, { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import api from '../utils/api';
-import { LogOut, Plus, LogIn, Trash2, LayoutDashboard, AlertCircle, CheckCircle2 } from 'lucide-react';
+import {
+  LogOut,
+  Plus,
+  LogIn,
+  Trash2,
+  LayoutDashboard,
+  AlertCircle,
+  CheckCircle2,
+  Search,
+  Copy,
+  RefreshCw,
+  Eye,
+  EyeOff,
+  Clock3,
+  ShieldCheck,
+  ArrowRight,
+  Star,
+  Filter
+} from 'lucide-react';
 
 const Dashboard = () => {
   const { user, logout } = useContext(AuthContext);
@@ -10,6 +28,11 @@ const Dashboard = () => {
   const [roomPassword, setRoomPassword] = useState('');
   const [recentRooms, setRecentRooms] = useState([]);
   const [toast, setToast] = useState(null);
+  const [roomSearch, setRoomSearch] = useState('');
+  const [showCreatePassword, setShowCreatePassword] = useState(false);
+  const [showJoinPassword, setShowJoinPassword] = useState(false);
+  const [favoriteRooms, setFavoriteRooms] = useState([]);
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const navigate = useNavigate();
 
   const showToast = (message, type = 'error') => {
@@ -27,6 +50,13 @@ const Dashboard = () => {
       }
     };
     fetchRooms();
+  }, []);
+
+  useEffect(() => {
+    const savedFavorites = localStorage.getItem('favoriteRooms');
+    if (savedFavorites) {
+      setFavoriteRooms(JSON.parse(savedFavorites));
+    }
   }, []);
 
   const handleCreateRoom = async (e) => {
@@ -67,6 +97,39 @@ const Dashboard = () => {
     navigate('/login');
   };
 
+  const generateRoomId = () => {
+    const suffix = Math.random().toString(36).slice(2, 7);
+    setRoomId(`room-${suffix}`);
+    showToast('Room ID generated', 'success');
+  };
+
+  const copyText = async (text, label = 'Copied') => {
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast(label, 'success');
+    } catch {
+      showToast('Could not copy to clipboard');
+    }
+  };
+
+  const toggleFavoriteRoom = (targetRoomId) => {
+    setFavoriteRooms(prev => {
+      const next = prev.includes(targetRoomId)
+        ? prev.filter(id => id !== targetRoomId)
+        : [...prev, targetRoomId];
+      localStorage.setItem('favoriteRooms', JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const filteredRooms = recentRooms.filter((room) =>
+    room.roomId?.toLowerCase().includes(roomSearch.trim().toLowerCase()) &&
+    (!showFavoritesOnly || favoriteRooms.includes(room.roomId))
+  );
+
+  const adminRooms = recentRooms.filter((room) => room.admin === user?.id).length;
+  const latestRoom = [...recentRooms].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))[0];
+
   return (
     <div className="min-h-screen bg-animated-gradient text-white p-4 md:p-8 lg:p-12 font-sans relative overflow-x-hidden">
       {/* Decorative background elements */}
@@ -94,6 +157,51 @@ const Dashboard = () => {
           </button>
         </div>
 
+        <div className="grid sm:grid-cols-3 gap-4 animate-fadeIn animate-delay-100">
+          <div className="glass-panel-light p-5 rounded-2xl border-white/10">
+            <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase tracking-widest mb-3">
+              Workspaces <LayoutDashboard className="w-4 h-4 text-indigo-300" />
+            </div>
+            <div className="text-3xl font-black text-white">{recentRooms.length}</div>
+            <p className="text-xs text-slate-500 mt-1">Recent rooms available</p>
+          </div>
+          <div className="glass-panel-light p-5 rounded-2xl border-white/10">
+            <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase tracking-widest mb-3">
+              Admin <ShieldCheck className="w-4 h-4 text-emerald-300" />
+            </div>
+            <div className="text-3xl font-black text-white">{adminRooms}</div>
+            <p className="text-xs text-slate-500 mt-1">Rooms you can manage</p>
+          </div>
+          <div className="glass-panel-light p-5 rounded-2xl border-white/10">
+            <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase tracking-widest mb-3">
+              Latest <Clock3 className="w-4 h-4 text-cyan-300" />
+            </div>
+            <div className="text-lg font-black text-white truncate">{latestRoom?.roomId || 'No activity'}</div>
+            <p className="text-xs text-slate-500 mt-1">
+              {latestRoom ? new Date(latestRoom.updatedAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : 'Create or join a room'}
+            </p>
+          </div>
+        </div>
+        <div className="glass-panel-light p-4 rounded-2xl border-white/10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 animate-fadeIn animate-delay-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-300">
+              <Star className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-white">Pinned workspaces</p>
+              <p className="text-xs text-slate-400">{favoriteRooms.length} room{favoriteRooms.length === 1 ? '' : 's'} starred on this device</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowFavoritesOnly(prev => !prev)}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all flex items-center justify-center gap-2 ${showFavoritesOnly ? 'bg-amber-500/15 border-amber-500/30 text-amber-200' : 'bg-white/5 border-white/10 text-slate-300 hover:text-white hover:bg-white/10'}`}
+          >
+            <Filter className="w-4 h-4" />
+            {showFavoritesOnly ? 'Showing Favorites' : 'Show Favorites'}
+          </button>
+        </div>
+
         {/* Action Grids */}
         <div className="grid lg:grid-cols-2 gap-8 animate-fadeIn animate-delay-100">
           
@@ -109,24 +217,54 @@ const Dashboard = () => {
             </h2>
             <form onSubmit={handleCreateRoom} className="space-y-6 relative z-10">
               <div className="group/input">
-                <label className="text-[11px] text-slate-400 font-bold uppercase tracking-widest ml-1 mb-2 block group-focus-within/input:text-indigo-400 transition-colors">Room ID</label>
-                <input
-                  type="text"
-                  placeholder="e.g. project-x"
-                  className="w-full p-4 rounded-xl glass-input font-medium placeholder-slate-500"
-                  value={roomId}
-                  onChange={(e) => setRoomId(e.target.value)}
-                />
+                <div className="flex items-center justify-between ml-1 mb-2">
+                  <label className="text-[11px] text-slate-400 font-bold uppercase tracking-widest group-focus-within/input:text-indigo-400 transition-colors">Room ID</label>
+                  <button
+                    type="button"
+                    onClick={generateRoomId}
+                    className="text-[11px] text-indigo-300 hover:text-white font-bold uppercase tracking-wider flex items-center gap-1"
+                  >
+                    <RefreshCw className="w-3 h-3" /> Generate
+                  </button>
+                </div>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="e.g. project-x"
+                    className="w-full p-4 pr-12 rounded-xl glass-input font-medium placeholder-slate-500"
+                    value={roomId}
+                    onChange={(e) => setRoomId(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => roomId && copyText(roomId, 'Room ID copied')}
+                    disabled={!roomId}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-white disabled:opacity-30"
+                    title="Copy Room ID"
+                  >
+                    <Copy className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
               <div className="group/input">
                 <label className="text-[11px] text-slate-400 font-bold uppercase tracking-widest ml-1 mb-2 block group-focus-within/input:text-indigo-400 transition-colors">Password</label>
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  className="w-full p-4 rounded-xl glass-input font-medium placeholder-slate-500"
-                  value={roomPassword}
-                  onChange={(e) => setRoomPassword(e.target.value)}
-                />
+                <div className="relative">
+                  <input
+                    type={showCreatePassword ? 'text' : 'password'}
+                    placeholder="Enter room password"
+                    className="w-full p-4 pr-12 rounded-xl glass-input font-medium placeholder-slate-500"
+                    value={roomPassword}
+                    onChange={(e) => setRoomPassword(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCreatePassword(prev => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-white"
+                    title={showCreatePassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showCreatePassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
               <button type="submit" className="w-full glass-button p-4 rounded-xl font-bold text-lg tracking-wide mt-4 group/btn flex items-center justify-center gap-2">
                 Create Workspace <Plus className="w-5 h-5 group-hover/btn:scale-125 transition-transform" />
@@ -157,13 +295,23 @@ const Dashboard = () => {
               </div>
               <div className="group/input">
                 <label className="text-[11px] text-slate-400 font-bold uppercase tracking-widest ml-1 mb-2 block group-focus-within/input:text-emerald-400 transition-colors">Password</label>
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  className="w-full p-4 rounded-xl glass-input font-medium placeholder-slate-500 focus:border-emerald-500/60 focus:shadow-[0_0_15px_rgba(16,185,129,0.3)]"
-                  value={roomPassword}
-                  onChange={(e) => setRoomPassword(e.target.value)}
-                />
+                <div className="relative">
+                  <input
+                    type={showJoinPassword ? 'text' : 'password'}
+                    placeholder="Enter room password"
+                    className="w-full p-4 pr-12 rounded-xl glass-input font-medium placeholder-slate-500 focus:border-emerald-500/60 focus:shadow-[0_0_15px_rgba(16,185,129,0.3)]"
+                    value={roomPassword}
+                    onChange={(e) => setRoomPassword(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowJoinPassword(prev => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-white"
+                    title={showJoinPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showJoinPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
               <button type="submit" className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 border border-emerald-400/20 shadow-[0_8px_20px_rgba(16,185,129,0.3)] hover:shadow-[0_12px_25px_rgba(16,185,129,0.4)] text-white p-4 rounded-xl font-bold text-lg tracking-wide transition-all hover:-translate-y-1 mt-4 group/btn flex items-center justify-center gap-2">
                 Join Workspace <LogIn className="w-5 h-5 group-hover/btn:translate-x-1 transition-transform" />
@@ -174,18 +322,36 @@ const Dashboard = () => {
 
         {/* Recent Rooms List */}
         <div className="glass-panel p-8 sm:p-10 rounded-[2rem] animate-fadeIn animate-delay-200">
-          <h2 className="text-xl font-extrabold mb-8 text-white tracking-tight flex items-center gap-3">
-            <span className="w-2 h-8 bg-indigo-500 rounded-full inline-block"></span>
-            Recent Workspaces
-          </h2>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+            <h2 className="text-xl font-extrabold text-white tracking-tight flex items-center gap-3">
+              <span className="w-2 h-8 bg-indigo-500 rounded-full inline-block"></span>
+              Recent Workspaces
+            </h2>
+            <div className="relative w-full md:w-80">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+              <input
+                type="search"
+                value={roomSearch}
+                onChange={(e) => setRoomSearch(e.target.value)}
+                placeholder="Search rooms..."
+                className="w-full pl-10 pr-4 py-3 rounded-xl glass-input text-sm placeholder-slate-500"
+              />
+            </div>
+          </div>
           
           {recentRooms.length === 0 ? (
             <div className="text-center py-12 bg-slate-800/30 rounded-2xl border border-dashed border-slate-600/50">
               <p className="text-slate-400 font-medium">No recent rooms found. Create or join one above!</p>
             </div>
+          ) : filteredRooms.length === 0 ? (
+            <div className="text-center py-12 bg-slate-800/30 rounded-2xl border border-dashed border-slate-600/50">
+              <p className="text-slate-400 font-medium">
+                {showFavoritesOnly ? 'No favorite rooms match your filters.' : `No rooms match "${roomSearch}".`}
+              </p>
+            </div>
           ) : (
             <ul className="grid md:grid-cols-2 gap-5">
-              {recentRooms.map((room) => (
+              {filteredRooms.map((room) => (
                 <li key={room._id} className="glass-panel-light p-5 rounded-2xl flex justify-between items-center hover:bg-slate-700/40 transition-all border-white/5 hover:border-indigo-500/30 hover:shadow-[0_0_20px_rgba(99,102,241,0.1)] group">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
@@ -196,11 +362,35 @@ const Dashboard = () => {
                       Last active: {new Date(room.updatedAt).toLocaleDateString()}
                     </span>
                   </div>
-                  <div className="flex items-center">
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => toggleFavoriteRoom(room.roomId)}
+                      className={`p-2.5 rounded-xl transition-all border border-transparent ${favoriteRooms.includes(room.roomId) ? 'text-amber-300 bg-amber-500/10 hover:bg-amber-500/20' : 'text-slate-500 hover:text-amber-300 hover:bg-amber-500/10 hover:border-amber-500/20'}`}
+                      title={favoriteRooms.includes(room.roomId) ? 'Remove from favorites' : 'Add to favorites'}
+                    >
+                      <Star className={`w-5 h-5 ${favoriteRooms.includes(room.roomId) ? 'fill-current' : ''}`} />
+                    </button>
+                    <button
+                      onClick={() => copyText(room.roomId, 'Room ID copied')}
+                      className="text-slate-500 hover:text-indigo-300 p-2.5 rounded-xl hover:bg-indigo-500/10 transition-all border border-transparent hover:border-indigo-500/20"
+                      title="Copy Room ID"
+                    >
+                      <Copy className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setRoomId(room.roomId);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      className="text-slate-500 hover:text-emerald-300 p-2.5 rounded-xl hover:bg-emerald-500/10 transition-all border border-transparent hover:border-emerald-500/20"
+                      title="Use this Room ID"
+                    >
+                      <ArrowRight className="w-5 h-5" />
+                    </button>
                     {room.admin === user?.id && (
                       <button
                         onClick={() => handleDeleteRoom(room.roomId)}
-                        className="text-slate-500 hover:text-red-400 p-2.5 rounded-xl hover:bg-red-500/10 transition-all border border-transparent hover:border-red-500/20 opacity-0 group-hover:opacity-100 focus:opacity-100"
+                        className="text-slate-500 hover:text-red-400 p-2.5 rounded-xl hover:bg-red-500/10 transition-all border border-transparent hover:border-red-500/20"
                         title="Delete Room (Admin only)"
                       >
                         <Trash2 className="w-5 h-5" />

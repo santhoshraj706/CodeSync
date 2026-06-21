@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext, useRef } from 'react';
+import { useEffect, useState, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { SocketContext } from '../context/SocketContext';
@@ -8,7 +8,7 @@ import Whiteboard from '../components/Whiteboard';
 import OutputWindow from '../components/OutputWindow';
 import api from '../utils/api';
 import confetti from 'canvas-confetti';
-import { Users, Code, PenTool, Play, LogOut, Copy, Hash, MessageSquare, Terminal, Download, Wifi, WifiOff, CheckCircle2, AlertCircle, Keyboard, X } from 'lucide-react';
+import { Users, Code, PenTool, Play, LogOut, Copy, Hash, MessageSquare, Download, Wifi, WifiOff, CheckCircle2, AlertCircle, Keyboard, X, PanelBottom, Maximize2, Minimize2, Settings2, Plus, Minus } from 'lucide-react';
 
 const Room = () => {
   const { roomId } = useParams();
@@ -26,6 +26,11 @@ const Room = () => {
   const [isConnected, setIsConnected] = useState(false);
   const [toast, setToast] = useState(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [stdin, setStdin] = useState('');
+  const [showStdin, setShowStdin] = useState(false);
+  const [isOutputExpanded, setIsOutputExpanded] = useState(false);
+  const [isFocusMode, setIsFocusMode] = useState(false);
+  const [editorFontSize, setEditorFontSize] = useState(14);
 
   // Adjustable layout states
   const [leftWidth, setLeftWidth] = useState(280);
@@ -158,7 +163,7 @@ const Room = () => {
       const res = await api.post('/execute/run-code', {
         source_code: code,
         language,
-        stdin: ''
+        stdin
       });
       setOutput(res.data);
       if (!res.data.stderr) {
@@ -201,7 +206,12 @@ const Room = () => {
         handleRunCode();
       }
       if ((e.ctrlKey || e.metaKey) && e.key === '/') {
+        e.preventDefault();
         setShowShortcuts(prev => !prev);
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        handleDownloadCode();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -230,7 +240,7 @@ const Room = () => {
       )}
 
       {/* Left Panel: Users & Room Info */}
-      {(!isMobile || mobileTab === 'users') && (
+      {!isFocusMode && (!isMobile || mobileTab === 'users') && (
         <div 
           className="glass-panel rounded-2xl flex flex-col overflow-hidden border-white/10 shadow-2xl relative z-10 min-h-0"
           style={isMobile ? { width: '100%', flex: 1 } : { width: `${leftWidth}px`, flexShrink: 0 }}
@@ -335,7 +345,7 @@ const Room = () => {
       )}
 
       {/* Left Resizer */}
-      {!isMobile && (
+      {!isMobile && !isFocusMode && (
         <div 
           onMouseDown={startResizeLeft}
           className={`w-1 cursor-col-resize self-stretch hover:w-1.5 hover:bg-indigo-500/30 active:bg-indigo-500/80 transition-all z-20 shrink-0 mx-1 ${isResizingLeft ? 'bg-indigo-500/80 w-1.5' : ''}`}
@@ -377,6 +387,41 @@ const Room = () => {
             
             {activeTab === 'editor' && (
               <div className="flex items-center space-x-2 md:space-x-3">
+                <div className="hidden xl:flex items-center gap-3 mr-1 px-3 py-2 rounded-xl bg-slate-900/60 border border-white/5 text-[11px] text-slate-400">
+                  <span className="flex items-center gap-1.5">
+                    <Code className="w-3.5 h-3.5 text-indigo-300" />
+                    {language.toUpperCase()}
+                  </span>
+                  <span className="w-px h-4 bg-white/10" />
+                  <span>{code.split('\n').length} lines</span>
+                </div>
+                <div className="hidden lg:flex items-center gap-1 px-1.5 py-1.5 rounded-xl bg-slate-900/60 border border-white/5">
+                  <Settings2 className="w-3.5 h-3.5 text-slate-500 mx-1" />
+                  <button
+                    onClick={() => setEditorFontSize(size => Math.max(11, size - 1))}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                    title="Decrease editor font size"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="w-7 text-center text-[11px] font-bold text-slate-300">{editorFontSize}</span>
+                  <button
+                    onClick={() => setEditorFontSize(size => Math.min(22, size + 1))}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                    title="Increase editor font size"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                {!isMobile && (
+                  <button
+                    onClick={() => setIsFocusMode(prev => !prev)}
+                    title={isFocusMode ? 'Show side panels' : 'Focus workspace'}
+                    className={`bg-slate-900/80 border px-3 py-1.5 md:py-2 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all cursor-pointer hover:bg-slate-800 flex items-center justify-center shadow-inner ${isFocusMode ? 'border-indigo-500/40 text-indigo-300' : 'border-white/10 text-slate-300 hover:text-white'}`}
+                  >
+                    {isFocusMode ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     if (!document.fullscreenElement) {
@@ -388,7 +433,7 @@ const Room = () => {
                   title="Toggle Fullscreen"
                   className="bg-slate-900/80 border border-white/10 text-slate-300 hover:text-white px-3 py-1.5 md:py-2 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all cursor-pointer hover:bg-slate-800 flex items-center justify-center shadow-inner"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+                  <Maximize2 className="w-4 h-4" />
                 </button>
                 <button
                   onClick={handleDownloadCode}
@@ -435,7 +480,7 @@ const Room = () => {
           {/* Main Workspace */}
           <div className="flex-1 relative bg-[#0f111a] border border-white/10 z-10 overflow-hidden shadow-2xl">
             <div className={`absolute inset-0 ${activeTab === 'editor' ? 'block' : 'hidden'}`}>
-              <EditorComponent roomId={roomId} code={code} setCode={setCode} language={language} setLanguage={setLanguage} theme={editorTheme} showToast={showToast} />
+              <EditorComponent roomId={roomId} code={code} setCode={setCode} language={language} setLanguage={setLanguage} theme={editorTheme} showToast={showToast} fontSize={editorFontSize} />
             </div>
             <div className={`absolute inset-0 ${activeTab === 'whiteboard' ? 'block' : 'hidden'}`}>
               <Whiteboard roomId={roomId} isVisible={activeTab === 'whiteboard'} />
@@ -443,7 +488,7 @@ const Room = () => {
           </div>
 
           {/* Output Window */}
-          <div className="h-44 md:h-56 glass-panel rounded-b-2xl border-t-0 border-white/10 flex flex-col z-20">
+          <div className={`${isOutputExpanded ? 'h-[55vh]' : 'h-44 md:h-56'} glass-panel rounded-b-2xl border-t-0 border-white/10 flex flex-col z-20 transition-[height] duration-300`}>
             <div className="bg-white/5 border-b border-white/5 px-5 py-2 flex items-center justify-between">
               <div className="text-[10px] md:text-xs text-indigo-300 font-bold uppercase tracking-widest flex items-center">
                 <div className="w-2 h-2 rounded-full bg-indigo-400 mr-2 animate-pulse"></div>
@@ -451,6 +496,21 @@ const Room = () => {
               </div>
               
               <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setShowStdin(prev => !prev)}
+                  className={`p-1 rounded hover:bg-white/10 transition-colors flex items-center gap-1.5 px-2 text-[10px] font-bold uppercase tracking-wider ${showStdin ? 'text-indigo-300' : 'text-slate-400 hover:text-white'}`}
+                  title="Toggle stdin"
+                >
+                  <PanelBottom className="w-3.5 h-3.5" />
+                  Stdin
+                </button>
+                <button
+                  onClick={() => setIsOutputExpanded(prev => !prev)}
+                  className="text-slate-400 hover:text-white p-1 rounded hover:bg-white/10 transition-colors"
+                  title={isOutputExpanded ? 'Collapse Output' : 'Expand Output'}
+                >
+                  {isOutputExpanded ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+                </button>
                 <button
                   onClick={() => {
                     const text = output?.stdout || output?.stderr || output?.compile_output;
@@ -475,6 +535,20 @@ const Room = () => {
                 </button>
               </div>
             </div>
+            {showStdin && (
+              <div className="border-b border-white/5 bg-slate-950/70 p-3 animate-fadeIn">
+                <textarea
+                  value={stdin}
+                  onChange={(e) => setStdin(e.target.value)}
+                  placeholder="Standard input for your program, one value per line..."
+                  className="w-full h-20 resize-none rounded-xl bg-black/30 border border-white/10 focus:border-indigo-500/40 px-3 py-2 text-xs font-mono text-slate-100 placeholder-slate-500 outline-none focus:ring-1 focus:ring-indigo-500/30"
+                />
+                <div className="mt-2 flex items-center justify-between text-[10px] text-slate-500">
+                  <span>{stdin ? `${stdin.split('\n').length} input line${stdin.split('\n').length === 1 ? '' : 's'}` : 'No stdin configured'}</span>
+                  <button onClick={() => setStdin('')} className="hover:text-red-300 uppercase font-bold tracking-wider">Clear stdin</button>
+                </div>
+              </div>
+            )}
             <div className="flex-1 p-4 overflow-y-auto font-mono text-xs md:text-sm custom-scrollbar bg-black/40">
               <OutputWindow output={output} isExecuting={isExecuting} />
             </div>
@@ -483,7 +557,7 @@ const Room = () => {
       )}
 
       {/* Right Resizer */}
-      {!isMobile && (
+      {!isMobile && !isFocusMode && (
         <div 
           onMouseDown={startResizeRight}
           className={`w-1 cursor-col-resize self-stretch hover:w-1.5 hover:bg-indigo-500/30 active:bg-indigo-500/80 transition-all z-20 shrink-0 mx-1 ${isResizingRight ? 'bg-indigo-500/80 w-1.5' : ''}`}
@@ -491,7 +565,7 @@ const Room = () => {
       )}
 
       {/* Right Panel: Chat */}
-      {(!isMobile || mobileTab === 'chat') && (
+      {!isFocusMode && (!isMobile || mobileTab === 'chat') && (
         <div 
           className="flex flex-col relative z-10 min-h-0"
           style={isMobile ? { width: '100%', flex: 1 } : { width: `${rightWidth}px`, flexShrink: 0 }}
@@ -570,6 +644,13 @@ const Room = () => {
                 <div className="flex gap-1.5">
                   <span className="bg-slate-800 text-slate-300 px-2 py-1 rounded text-xs font-mono border border-slate-700">Ctrl</span>
                   <span className="bg-slate-800 text-slate-300 px-2 py-1 rounded text-xs font-mono border border-slate-700">/</span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
+                <span className="text-slate-300 font-medium">Download Code</span>
+                <div className="flex gap-1.5">
+                  <span className="bg-slate-800 text-slate-300 px-2 py-1 rounded text-xs font-mono border border-slate-700">Ctrl</span>
+                  <span className="bg-slate-800 text-slate-300 px-2 py-1 rounded text-xs font-mono border border-slate-700">S</span>
                 </div>
               </div>
               <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">

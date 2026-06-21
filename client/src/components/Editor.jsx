@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState, useContext, useCallback } from 'react';
 import MonacoEditor from '@monaco-editor/react';
 import { SocketContext } from '../context/SocketContext';
-import { Wand2, WrapText } from 'lucide-react';
+import { Wand2, WrapText, Sparkles, Play, Loader2 } from 'lucide-react';
 
-const EditorComponent = ({ roomId, code, setCode, language, setLanguage, theme, showToast, fontSize = 14 }) => {
+const EditorComponent = ({ roomId, code, setCode, language, setLanguage, theme, showToast, fontSize = 14, onRunCode, isExecuting, onToggleAI }) => {
   const socket = useContext(SocketContext);
   const editorRef = useRef(null);
   const [wordWrap, setWordWrap] = useState('on');
@@ -120,6 +120,14 @@ const EditorComponent = ({ roomId, code, setCode, language, setLanguage, theme, 
           <span className="max-w-0 overflow-hidden group-hover/btn:max-w-xs group-hover/btn:ml-2 transition-all duration-300 ease-in-out whitespace-nowrap text-xs font-bold">Copy</span>
         </button>
         <button
+          onClick={onToggleAI}
+          className="bg-purple-500/80 hover:bg-purple-500 text-white p-2 rounded-xl backdrop-blur-sm border border-purple-400/50 shadow-lg transition-all hover:scale-105 group/btn flex items-center"
+          title="Toggle AI Assistant"
+        >
+          <Sparkles className="w-4 h-4" />
+          <span className="max-w-0 overflow-hidden group-hover/btn:max-w-xs group-hover/btn:ml-2 transition-all duration-300 ease-in-out whitespace-nowrap text-xs font-bold">Ask AI</span>
+        </button>
+        <button
           onClick={formatCode}
           className="bg-indigo-500/80 hover:bg-indigo-500 text-white p-2 rounded-xl backdrop-blur-sm border border-indigo-400/50 shadow-lg transition-all hover:scale-105 group/btn flex items-center"
           title="Format Code"
@@ -134,6 +142,16 @@ const EditorComponent = ({ roomId, code, setCode, language, setLanguage, theme, 
         >
           <WrapText className="w-4 h-4" />
           <span className="max-w-0 overflow-hidden group-hover/btn:max-w-xs group-hover/btn:ml-2 transition-all duration-300 ease-in-out whitespace-nowrap text-xs font-bold">Wrap</span>
+        </button>
+        <div className="w-px h-6 bg-white/20 mx-1"></div>
+        <button
+          onClick={onRunCode}
+          disabled={isExecuting}
+          className="bg-emerald-500 hover:bg-emerald-400 text-white p-2 rounded-xl backdrop-blur-sm border border-emerald-400/50 shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-all hover:scale-105 hover:-translate-y-1 group/btn flex items-center disabled:opacity-50 disabled:transform-none"
+          title="Run Code"
+        >
+          {isExecuting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+          <span className="max-w-0 overflow-hidden group-hover/btn:max-w-xs group-hover/btn:ml-2 transition-all duration-300 ease-in-out whitespace-nowrap text-xs font-bold">{isExecuting ? 'Running' : 'Run Code'}</span>
         </button>
       </div>
     </div>

@@ -8,6 +8,7 @@ const { Server } = require('socket.io');
 const authRoutes = require('./routes/auth');
 const roomRoutes = require('./routes/rooms');
 const executeRoutes = require('./routes/execute');
+const aiRoutes = require('./routes/ai');
 const socketHandler = require('./socket/socket');
 
 const app = express();
@@ -40,6 +41,7 @@ app.get('/', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/rooms', roomRoutes);
 app.use('/api/execute', executeRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Connect to MongoDB
 mongoose.set('bufferCommands', false);

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useContext } from 'react';
 import { SocketContext } from '../context/SocketContext';
 import { AuthContext } from '../context/AuthContext';
-import { Send, Smile, MessageSquare, Search, Volume2, VolumeX, Download, ArrowDown } from 'lucide-react';
+import { Send, Smile, MessageSquare, Search, Volume2, VolumeX, Download, ArrowDown, Reply, Edit2, X } from 'lucide-react';
 import EmojiPicker from 'emoji-picker-react';
 
 const playNotificationSound = () => {
@@ -31,12 +31,14 @@ const playNotificationSound = () => {
   }
 };
 
-const Chat = ({ roomId }) => {
+const Chat = ({ roomId, onMessagesUpdate }) => {
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState('');
   const [showEmoji, setShowEmoji] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [isMuted, setIsMuted] = useState(false);
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [editingMessage, setEditingMessage] = useState(null);
   const socket = useContext(SocketContext);
   const { user } = useContext(AuthContext);
   const chatContainerRef = useRef(null);
@@ -49,7 +51,11 @@ const Chat = ({ roomId }) => {
     };
 
     const handleMessage = (msg) => {
-      setMessages((prev) => [...prev, msg]);
+      setMessages((prev) => {
+        const updated = [...prev, msg];
+        onMessagesUpdate?.(updated);
+        return updated;
+      });
       
       // Play a soft notification chime if message is from another team member
       if (!isMuted && user && msg.username !== user.username) {
@@ -57,14 +63,22 @@ const Chat = ({ roomId }) => {
       }
     };
 
+    const handleEditMessage = ({ id, newMessage }) => {
+      setMessages((prev) => prev.map(msg => 
+        msg.id === id ? { ...msg, message: newMessage, isEdited: true } : msg
+      ));
+    };
+
     socket.on('chat-history', handleHistory);
     socket.on('chat-message', handleMessage);
+    socket.on('edit-message', handleEditMessage);
 
     return () => {
       socket.off('chat-history', handleHistory);
       socket.off('chat-message', handleMessage);
+      socket.off('edit-message', handleEditMessage);
     };
-  }, [socket, user, isMuted]);
+  }, [socket, user, isMuted, onMessagesUpdate]);
 
   useEffect(() => {
     if (chatContainerRef.current) {
@@ -79,18 +93,34 @@ const Chat = ({ roomId }) => {
     e.preventDefault();
     if (!message.trim()) return;
 
-    const newMsg = {
-      roomId,
-      message,
-      username: user.username,
-      timestamp: new Date().toISOString()
-    };
+    if (editingMessage) {
+      socket.emit('edit-message', { roomId, id: editingMessage.id, newMessage: message });
+      setMessages(prev => prev.map(m => m.id === editingMessage.id ? { ...m, message, isEdited: true } : m));
+      setEditingMessage(null);
+    } else {
+      const newMsg = {
+        roomId,
+        id: Date.now().toString() + Math.random().toString(36).substring(7),
+        message,
+        username: user.username,
+        timestamp: new Date().toISOString(),
+        replyTo: replyingTo?.id,
+        replyToText: replyingTo?.message,
+        replyToUser: replyingTo?.username
+      };
 
-    // Add message locally immediately for instant feedback
-    setMessages((prev) => [...prev, { message: newMsg.message, username: newMsg.username, timestamp: newMsg.timestamp }]);
+      // Add message locally immediately for instant feedback
+      setMessages((prev) => {
+        const updated = [...prev, newMsg];
+        onMessagesUpdate?.(updated);
+        return updated;
+      });
 
-    // Emit to server (server broadcasts to OTHER clients only)
-    socket.emit('chat-message', newMsg);
+      // Emit to server
+      socket.emit('chat-message', newMsg);
+      setReplyingTo(null);
+    }
+    
     setMessage('');
     setShowEmoji(false);
   };
@@ -209,26 +239,53 @@ const Chat = ({ roomId }) => {
                 <div className={`flex items-center gap-1.5 mb-1.5 px-1 ${isMe ? 'flex-row-reverse' : ''}`}>
                   {!isMe && (
                     <div 
-                      className="w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold text-white shadow-sm border border-white/10"
+                      className="w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold text-white shadow-sm border border-white/10 shrink-0"
                       style={{ background: `linear-gradient(135deg, hsl(${msg.username?.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 360}, 70%, 55%), hsl(${(msg.username?.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 360 + 40) % 360}, 70%, 35%))` }}
                     >
                       {msg.username?.charAt(0).toUpperCase()}
                     </div>
                   )}
-                  <span className="text-[10px] uppercase tracking-wider text-indigo-300 font-bold">
+                  <span className="text-[10px] uppercase tracking-wider text-indigo-300 font-bold shrink-0">
                     {isMe ? 'You' : msg.username}
                   </span>
                 </div>
-                <div className={`px-4 py-2.5 rounded-2xl max-w-[85%] shadow-lg transition-all duration-300 hover:scale-[1.01] ${
-                  isMe 
-                    ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-tr-none border border-indigo-400/40 shadow-indigo-500/10' 
-                    : 'bg-white/5 backdrop-blur-md text-slate-100 rounded-tl-none border border-white/10 shadow-black/10'
-                }`}>
-                  <p className="break-words text-sm leading-relaxed font-normal">{msg.message}</p>
+                
+                {msg.replyTo && (
+                  <div className={`flex items-center gap-2 mb-1 opacity-70 text-[10px] ${isMe ? 'mr-2' : 'ml-8'}`}>
+                    <Reply className="w-3 h-3 text-slate-400" />
+                    <div className="bg-white/5 border border-white/5 rounded-lg px-2 py-1 max-w-[150px] truncate">
+                      <span className="font-bold text-indigo-300 mr-1">{msg.replyToUser}:</span>
+                      <span className="text-slate-300">{msg.replyToText}</span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="relative group/bubble flex items-center max-w-full">
+                  {isMe && (
+                    <div className="absolute right-full mr-2 flex items-center gap-1 opacity-0 group-hover/bubble:opacity-100 transition-opacity pointer-events-none group-hover/bubble:pointer-events-auto">
+                      <button onClick={() => { setEditingMessage(msg); setMessage(msg.message); setReplyingTo(null); }} className="p-1.5 bg-slate-800 text-slate-300 hover:text-white rounded-full shadow-lg border border-white/10 hover:bg-slate-700" title="Edit"><Edit2 className="w-3 h-3" /></button>
+                      <button onClick={() => { setReplyingTo(msg); setEditingMessage(null); }} className="p-1.5 bg-slate-800 text-slate-300 hover:text-white rounded-full shadow-lg border border-white/10 hover:bg-slate-700" title="Reply"><Reply className="w-3 h-3" /></button>
+                    </div>
+                  )}
+
+                  <div className={`px-4 py-2.5 rounded-2xl max-w-xs md:max-w-sm lg:max-w-md shadow-lg transition-all duration-300 hover:scale-[1.01] relative ${
+                    isMe 
+                      ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-tr-none border border-indigo-400/40 shadow-indigo-500/10' 
+                      : 'bg-white/5 backdrop-blur-md text-slate-100 rounded-tl-none border border-white/10 shadow-black/10'
+                  }`}>
+                    <p className="break-words text-sm leading-relaxed font-normal whitespace-pre-wrap">{msg.message}</p>
+                  </div>
+
+                  {!isMe && (
+                    <div className="absolute left-full ml-2 flex items-center gap-1 opacity-0 group-hover/bubble:opacity-100 transition-opacity pointer-events-none group-hover/bubble:pointer-events-auto">
+                      <button onClick={() => { setReplyingTo(msg); setEditingMessage(null); }} className="p-1.5 bg-slate-800 text-slate-300 hover:text-white rounded-full shadow-lg border border-white/10 hover:bg-slate-700" title="Reply"><Reply className="w-3 h-3" /></button>
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-1 mt-1 px-1">
-                  <span className="text-[9px] text-slate-500 tracking-tight">
+                  <span className="text-[9px] text-slate-500 tracking-tight flex items-center gap-1">
                     {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {msg.isEdited && <span className="italic opacity-70">(edited)</span>}
                   </span>
                   {isMe && (
                     <svg className="w-3 h-3 text-indigo-400 opacity-70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -269,6 +326,25 @@ const Chat = ({ roomId }) => {
               <span className="w-1 h-1 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
             </div>
             Typing message...
+          </div>
+        )}
+        {(replyingTo || editingMessage) && (
+          <div className="absolute bottom-full left-0 right-0 bg-slate-900/90 border-t border-b border-indigo-500/30 px-4 py-2.5 flex items-center justify-between text-xs animate-fadeIn backdrop-blur-md">
+            <div className="flex flex-col gap-0.5 overflow-hidden">
+              <span className="font-bold text-indigo-400 flex items-center gap-1.5">
+                {replyingTo ? <><Reply className="w-3.5 h-3.5" /> Replying to {replyingTo.username}</> : <><Edit2 className="w-3.5 h-3.5" /> Editing message</>}
+              </span>
+              <span className="text-slate-300 truncate w-full opacity-80">
+                {replyingTo ? replyingTo.message : editingMessage.message}
+              </span>
+            </div>
+            <button 
+              type="button" 
+              onClick={() => { setReplyingTo(null); setEditingMessage(null); setMessage(''); }} 
+              className="p-1.5 hover:bg-white/10 rounded-full text-slate-400 hover:text-white transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         )}
         <form onSubmit={handleSend} className="p-4 flex items-center gap-2.5">

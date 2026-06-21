@@ -6,9 +6,10 @@ import EditorComponent from '../components/Editor';
 import Chat from '../components/Chat';
 import Whiteboard from '../components/Whiteboard';
 import OutputWindow from '../components/OutputWindow';
+import AIAssistant from '../components/AIAssistant';
 import api from '../utils/api';
 import confetti from 'canvas-confetti';
-import { Users, Code, PenTool, Play, LogOut, Copy, Hash, MessageSquare, Download, Wifi, WifiOff, CheckCircle2, AlertCircle, Keyboard, X, PanelBottom, Maximize2, Minimize2, Settings2, Plus, Minus } from 'lucide-react';
+import { Users, Code, PenTool, Play, LogOut, Copy, Hash, MessageSquare, Download, Wifi, WifiOff, CheckCircle2, AlertCircle, Keyboard, X, Sparkles, PanelBottom, Maximize2, Minimize2, Settings2, Plus, Minus } from 'lucide-react';
 
 const Room = () => {
   const { roomId } = useParams();
@@ -26,10 +27,13 @@ const Room = () => {
   const [isConnected, setIsConnected] = useState(false);
   const [toast, setToast] = useState(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showAI, setShowAI] = useState(false);
+  const [chatMessagesForAI, setChatMessagesForAI] = useState([]);
   const [stdin, setStdin] = useState('');
   const [showStdin, setShowStdin] = useState(false);
   const [isOutputExpanded, setIsOutputExpanded] = useState(false);
-  const [isFocusMode, setIsFocusMode] = useState(false);
+  const [showLeftPanel, setShowLeftPanel] = useState(true);
+  const [showRightPanel, setShowRightPanel] = useState(true);
   const [editorFontSize, setEditorFontSize] = useState(14);
 
   // Adjustable layout states
@@ -240,7 +244,7 @@ const Room = () => {
       )}
 
       {/* Left Panel: Users & Room Info */}
-      {!isFocusMode && (!isMobile || mobileTab === 'users') && (
+      {showLeftPanel && (!isMobile || mobileTab === 'users') && (
         <div 
           className="glass-panel rounded-2xl flex flex-col overflow-hidden border-white/10 shadow-2xl relative z-10 min-h-0"
           style={isMobile ? { width: '100%', flex: 1 } : { width: `${leftWidth}px`, flexShrink: 0 }}
@@ -333,6 +337,13 @@ const Room = () => {
                 <LogOut className="w-4 h-4 mr-2" /> Leave
               </button>
               <button
+                onClick={() => setShowAI(prev => !prev)}
+                className={`w-12 h-12 border rounded-xl flex items-center justify-center transition-all ${showAI ? 'bg-indigo-500/30 border-indigo-500/50 text-indigo-300 shadow-[0_0_15px_rgba(99,102,241,0.3)]' : 'bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 hover:text-white border-white/10'}`}
+                title="Toggle AI Assistant"
+              >
+                <Sparkles className="w-5 h-5" />
+              </button>
+              <button
                 onClick={() => setShowShortcuts(true)}
                 className="w-12 h-12 bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 hover:text-white border border-white/10 rounded-xl flex items-center justify-center transition-all"
                 title="Shortcuts (Ctrl+/)"
@@ -345,7 +356,7 @@ const Room = () => {
       )}
 
       {/* Left Resizer */}
-      {!isMobile && !isFocusMode && (
+      {!isMobile && showLeftPanel && (
         <div 
           onMouseDown={startResizeLeft}
           className={`w-1 cursor-col-resize self-stretch hover:w-1.5 hover:bg-indigo-500/30 active:bg-indigo-500/80 transition-all z-20 shrink-0 mx-1 ${isResizingLeft ? 'bg-indigo-500/80 w-1.5' : ''}`}
@@ -414,13 +425,22 @@ const Room = () => {
                   </button>
                 </div>
                 {!isMobile && (
-                  <button
-                    onClick={() => setIsFocusMode(prev => !prev)}
-                    title={isFocusMode ? 'Show side panels' : 'Focus workspace'}
-                    className={`bg-slate-900/80 border px-3 py-1.5 md:py-2 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all cursor-pointer hover:bg-slate-800 flex items-center justify-center shadow-inner ${isFocusMode ? 'border-indigo-500/40 text-indigo-300' : 'border-white/10 text-slate-300 hover:text-white'}`}
-                  >
-                    {isFocusMode ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setShowLeftPanel(prev => !prev)}
+                      title={showLeftPanel ? 'Hide Team Panel' : 'Show Team Panel'}
+                      className={`px-3 py-1.5 md:py-2 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all cursor-pointer flex items-center justify-center shadow-inner border ${!showLeftPanel ? 'bg-indigo-500/10 border-indigo-500/40 text-indigo-300' : 'bg-slate-900/80 hover:bg-slate-800 border-white/10 text-slate-300 hover:text-white'}`}
+                    >
+                      <Users className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setShowRightPanel(prev => !prev)}
+                      title={showRightPanel ? 'Hide Chat Panel' : 'Show Chat Panel'}
+                      className={`px-3 py-1.5 md:py-2 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all cursor-pointer flex items-center justify-center shadow-inner border ${!showRightPanel ? 'bg-indigo-500/10 border-indigo-500/40 text-indigo-300' : 'bg-slate-900/80 hover:bg-slate-800 border-white/10 text-slate-300 hover:text-white'}`}
+                    >
+                      <MessageSquare className="w-4 h-4" />
+                    </button>
+                  </div>
                 )}
                 <button
                   onClick={() => {
@@ -480,7 +500,19 @@ const Room = () => {
           {/* Main Workspace */}
           <div className="flex-1 relative bg-[#0f111a] border border-white/10 z-10 overflow-hidden shadow-2xl">
             <div className={`absolute inset-0 ${activeTab === 'editor' ? 'block' : 'hidden'}`}>
-              <EditorComponent roomId={roomId} code={code} setCode={setCode} language={language} setLanguage={setLanguage} theme={editorTheme} showToast={showToast} fontSize={editorFontSize} />
+              <EditorComponent 
+                roomId={roomId} 
+                code={code} 
+                setCode={setCode} 
+                language={language} 
+                setLanguage={setLanguage} 
+                theme={editorTheme} 
+                showToast={showToast} 
+                fontSize={editorFontSize} 
+                onRunCode={handleRunCode}
+                isExecuting={isExecuting}
+                onToggleAI={() => setShowAI(p => !p)}
+              />
             </div>
             <div className={`absolute inset-0 ${activeTab === 'whiteboard' ? 'block' : 'hidden'}`}>
               <Whiteboard roomId={roomId} isVisible={activeTab === 'whiteboard'} />
@@ -557,7 +589,7 @@ const Room = () => {
       )}
 
       {/* Right Resizer */}
-      {!isMobile && !isFocusMode && (
+      {!isMobile && showRightPanel && (
         <div 
           onMouseDown={startResizeRight}
           className={`w-1 cursor-col-resize self-stretch hover:w-1.5 hover:bg-indigo-500/30 active:bg-indigo-500/80 transition-all z-20 shrink-0 mx-1 ${isResizingRight ? 'bg-indigo-500/80 w-1.5' : ''}`}
@@ -565,12 +597,28 @@ const Room = () => {
       )}
 
       {/* Right Panel: Chat */}
-      {!isFocusMode && (!isMobile || mobileTab === 'chat') && (
+      {showRightPanel && (!isMobile || mobileTab === 'chat') && (
         <div 
           className="flex flex-col relative z-10 min-h-0"
           style={isMobile ? { width: '100%', flex: 1 } : { width: `${rightWidth}px`, flexShrink: 0 }}
         >
-          <Chat roomId={roomId} />
+          <Chat roomId={roomId} onMessagesUpdate={setChatMessagesForAI} />
+        </div>
+      )}
+
+      {/* AI Panel - Fixed overlay sliding in from right */}
+      {showAI && !isMobile && (
+        <div className="fixed top-0 right-0 h-screen w-[360px] z-[150] p-4 animate-fadeIn">
+          <AIAssistant
+            code={code}
+            language={language}
+            chatMessages={chatMessagesForAI}
+            onInsertCode={(newCode) => {
+              setCode(newCode);
+              showToast('Code inserted into editor!', 'success');
+            }}
+            onClose={() => setShowAI(false)}
+          />
         </div>
       )}
 

@@ -87,8 +87,17 @@ const socketHandler = (io) => {
       Room.updateOne({ roomId }, { language }).catch(err => console.error('DB Error updating language:', err.message));
     });
 
-    socket.on('chat-message', ({ roomId, message, username, timestamp }) => {
-      const msgObj = { message, username, timestamp };
+    socket.on('chat-message', ({ roomId, id, message, username, timestamp, replyTo, replyToText, replyToUser, isEdited }) => {
+      const msgObj = { 
+        id: id || Date.now().toString(), 
+        message, 
+        username, 
+        timestamp,
+        replyTo,
+        replyToText,
+        replyToUser,
+        isEdited: isEdited || false
+      };
 
       // Sync in-memory cache
       if (roomStates[roomId]) {
@@ -113,6 +122,31 @@ const socketHandler = (io) => {
           }
         }
       ).catch(err => console.error('DB Error saving message:', err.message));
+    });
+
+    socket.on('edit-message', ({ roomId, id, newMessage }) => {
+      // Sync in-memory cache
+      if (roomStates[roomId]) {
+        const msgIndex = roomStates[roomId].messages.findIndex(m => m.id === id);
+        if (msgIndex !== -1) {
+          roomStates[roomId].messages[msgIndex].message = newMessage;
+          roomStates[roomId].messages[msgIndex].isEdited = true;
+        }
+      }
+
+      // Broadcast to all OTHER clients
+      socket.to(roomId).emit('edit-message', { id, newMessage });
+
+      // Persist to MongoDB in background
+      Room.updateOne(
+        { roomId, "messages.id": id },
+        { 
+          $set: { 
+            "messages.$.message": newMessage,
+            "messages.$.isEdited": true
+          } 
+        }
+      ).catch(err => console.error('DB Error updating message:', err.message));
     });
 
     socket.on('whiteboard-draw', ({ roomId, drawData }) => {

@@ -1,1 +1,8 @@
 Error loading room state from MongoDB: Cannot call `rooms.findOne()` before initial connection is complete if `bufferCommands = false`. Make sure you `await mongoose.connect()` if you have `bufferCommands = false`.
+Cast to ObjectId failed for value "mem-1781967867710-ko1uk92jd" (type string) at path "members"
+Cast to ObjectId failed for value "mem-1781967867710-ko1uk92jd" (type string) at path "members"
+Cast to ObjectId failed for value "mem-1781967867710-ko1uk92jd" (type string) at path "members"
+Cast to ObjectId failed for value "mem-1781967867710-ko1uk92jd" (type string) at path "members"
+Cast to ObjectId failed for value "mem-1781967867710-ko1uk92jd" (type string) at path "members"
+Cast to ObjectId failed for value "mem-1781967867710-ko1uk92jd" (type string) at path "members" for model "Room"
+Cast to ObjectId failed for value "mem-1781967867710-ko1uk92jd" (type string) at path "members" for model "Room"

@@ -1,13 +1,38 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Code, Users, PenTool, Zap, Terminal, Globe, Shield, Sparkles,
   MessageSquare, ChevronRight, GitBranch, ExternalLink, Play,
-  Monitor, Layout, ArrowRight, Star, BookOpen, GraduationCap, Wifi, Check
+  Monitor, Layout, ArrowRight, Star, BookOpen, GraduationCap,
+  Wifi, Check, ChevronDown, Plus
 } from 'lucide-react';
+
+const FAQ_DATA = [
+  { q: 'What is CodeSync?', a: 'CodeSync is a real-time collaborative code editor with an integrated whiteboard, team chat, live code execution, and AI assistance. It lets you code, discuss, draw, and run code with your team in one seamless workspace.' },
+  { q: 'Can multiple users code together?', a: 'Yes. Multiple users can join the same room and edit code simultaneously. You will see each other\'s cursors, selections, and changes in real time — just like Google Docs for code.' },
+  { q: 'Does CodeSync support live code execution?', a: 'Yes. CodeSync includes a built-in code execution engine. You can run your code directly in the browser and see the output instantly, making it easy to test and debug collaboratively.' },
+  { q: 'Can teams use chat and whiteboard?', a: 'Absolutely. Every room comes with a team chat for messaging and a live whiteboard for sketching diagrams, flowcharts, and visual ideas alongside your code.' },
+  { q: 'Does CodeSync include AI assistance?', a: 'Yes. CodeSync features an AI Assistant that can help review code, suggest improvements, explain concepts, and answer questions — all within your collaborative workspace.' },
+];
 
 const Landing = () => {
   const [mockupTab, setMockupTab] = useState('code');
+  const [openFaq, setOpenFaq] = useState(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('reveal-visible');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+
+    const elements = document.querySelectorAll('[data-reveal]');
+    elements.forEach(el => observer.observe(el));
+    return () => observer.disconnect();
+  }, []);
 
   const mockupContent = {
     code: (
@@ -126,7 +151,7 @@ const Landing = () => {
     <div className="min-h-screen bg-animated-gradient text-white font-sans selection:bg-indigo-500/30">
 
       {/* Navigation Bar */}
-      <nav className="glass-panel sticky top-0 z-50 border-b border-white/10 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
+      <nav className="sticky top-0 z-50 border-b border-white/10 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between backdrop-blur-xl bg-[#0b0e1a]/80 shadow-[0_4px_30px_rgba(0,0,0,0.3)]">
         <div className="flex items-center gap-2">
           <div className="w-9 h-9 sm:w-10 sm:h-10 bg-indigo-500/20 rounded-xl flex items-center justify-center border border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.3)]">
             <Code className="text-indigo-400 w-5 h-5 sm:w-6 sm:h-6" />
@@ -141,7 +166,7 @@ const Landing = () => {
         </div>
       </nav>
 
-      {/* Hero Section — Compact */}
+      {/* Hero Section */}
       <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-12 sm:pt-16 pb-8 sm:pb-12 text-center animate-fadeIn">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs sm:text-sm font-semibold tracking-wide mb-5 sm:mb-6">
           <Sparkles className="w-3.5 h-3.5" />
@@ -185,7 +210,7 @@ const Landing = () => {
         </div>
       </main>
 
-      {/* Product Preview Mockup — Closer to Hero */}
+      {/* Product Preview Mockup */}
       <section className="max-w-5xl mx-auto px-4 sm:px-6 mb-12 sm:mb-16 animate-fadeIn animate-delay-300">
         <div className="glass-panel rounded-2xl sm:rounded-3xl border border-white/10 overflow-hidden shadow-2xl relative">
           <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-emerald-500/5 pointer-events-none"></div>
@@ -228,8 +253,27 @@ const Landing = () => {
         </div>
       </section>
 
+      {/* Trust / Use-Case Strip */}
+      <section data-reveal className="max-w-6xl mx-auto px-4 sm:px-6 mb-12 sm:mb-16">
+        <p className="text-xs sm:text-sm text-gray-400 text-center mb-4 sm:mb-5 font-medium tracking-wide uppercase">Built for</p>
+        <div className="flex flex-wrap items-center justify-center gap-2.5 sm:gap-3">
+          {[
+            { icon: Zap, label: 'Hackathon Teams' },
+            { icon: Users, label: 'College Projects' },
+            { icon: BookOpen, label: 'Peer Learning' },
+            { icon: Monitor, label: 'Interview Practice' },
+            { icon: GraduationCap, label: 'Classroom Demos' },
+          ].map(({ icon: Icon, label }) => (
+            <div key={label} className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-white/[0.04] border border-white/10 text-xs sm:text-sm text-gray-300 font-medium hover:bg-indigo-500/10 hover:border-indigo-500/30 hover:text-indigo-200 transition-all duration-300">
+              <Icon className="w-3.5 h-3.5" />
+              {label}
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* Features Section */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-16 sm:pb-24">
+      <section data-reveal className="max-w-6xl mx-auto px-4 sm:px-6 pb-16 sm:pb-24">
         <div className="text-center mb-10 sm:mb-14">
           <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-3 sm:mb-4">Everything you need to ship faster</h2>
           <p className="text-gray-400 text-sm sm:text-base md:text-lg max-w-2xl mx-auto">A unified workspace that brings your team and code together seamlessly.</p>
@@ -237,10 +281,10 @@ const Landing = () => {
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
           {[
-            { icon: Globe, label: 'Real-Time Sync', desc: 'See teammates\' cursors and edits as they happen with zero-latency collaboration.', color: 'blue', border: 'hover:border-blue-500/40', iconbg: 'bg-blue-500/10', iconcolor: 'text-blue-400', glow: 'group-hover:shadow-blue-500/10' },
+            { icon: Globe, label: 'Real-Time Sync', desc: 'See teammates\' cursors and edits with zero-latency collaboration.', color: 'blue', border: 'hover:border-blue-500/40', iconbg: 'bg-blue-500/10', iconcolor: 'text-blue-400', glow: 'group-hover:shadow-blue-500/10' },
             { icon: Code, label: 'Pro Editor', desc: 'Monaco-powered editing with syntax highlighting, auto-completion, and multi-language support.', color: 'purple', border: 'hover:border-purple-500/40', iconbg: 'bg-purple-500/10', iconcolor: 'text-purple-400', glow: 'group-hover:shadow-purple-500/10' },
-            { icon: PenTool, label: 'Live Whiteboard', desc: 'Sketch architectures, draw flowcharts, and collaborate visually on an integrated canvas.', color: 'emerald', border: 'hover:border-emerald-500/40', iconbg: 'bg-emerald-500/10', iconcolor: 'text-emerald-400', glow: 'group-hover:shadow-emerald-500/10' },
-            { icon: Play, label: 'Live Execution', desc: 'Compile and run code directly in the browser with real-time output and error feedback.', color: 'yellow', border: 'hover:border-yellow-500/40', iconbg: 'bg-yellow-500/10', iconcolor: 'text-yellow-400', glow: 'group-hover:shadow-yellow-500/10' },
+            { icon: PenTool, label: 'Live Whiteboard', desc: 'Sketch architectures and draw flowcharts on an integrated collaborative canvas.', color: 'emerald', border: 'hover:border-emerald-500/40', iconbg: 'bg-emerald-500/10', iconcolor: 'text-emerald-400', glow: 'group-hover:shadow-emerald-500/10' },
+            { icon: Play, label: 'Live Execution', desc: 'Compile and run code directly in the browser with real-time output feedback.', color: 'yellow', border: 'hover:border-yellow-500/40', iconbg: 'bg-yellow-500/10', iconcolor: 'text-yellow-400', glow: 'group-hover:shadow-yellow-500/10' },
             { icon: Users, label: 'Team Chat', desc: 'Integrated messaging with replies, editing, and emoji support right where the code lives.', color: 'pink', border: 'hover:border-pink-500/40', iconbg: 'bg-pink-500/10', iconcolor: 'text-pink-400', glow: 'group-hover:shadow-pink-500/10' },
             { icon: Shield, label: 'Secure Workspaces', desc: 'Password-protected rooms with admin controls for managing access and data.', color: 'cyan', border: 'hover:border-cyan-500/40', iconbg: 'bg-cyan-500/10', iconcolor: 'text-cyan-400', glow: 'group-hover:shadow-cyan-500/10' },
           ].map(({ icon: Icon, label, desc, border, iconbg, iconcolor, glow }) => (
@@ -261,7 +305,7 @@ const Landing = () => {
       </section>
 
       {/* How CodeSync Works */}
-      <section className="max-w-5xl mx-auto px-4 sm:px-6 pb-16 sm:pb-24">
+      <section data-reveal className="max-w-5xl mx-auto px-4 sm:px-6 pb-16 sm:pb-24">
         <div className="text-center mb-10 sm:mb-14">
           <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-3 sm:mb-4">How CodeSync Works</h2>
           <p className="text-gray-400 text-sm sm:text-base md:text-lg max-w-2xl mx-auto">Get your team coding together in three simple steps.</p>
@@ -269,7 +313,7 @@ const Landing = () => {
 
         <div className="grid sm:grid-cols-3 gap-5 sm:gap-6 md:gap-8">
           {[
-            { step: '01', icon: PlusIcon, label: 'Create a workspace', desc: 'Generate a unique room ID, set an access code, and share it with your team.' },
+            { step: '01', icon: Plus, label: 'Create a workspace', desc: 'Generate a unique room ID, set an access code, and share it with your team.' },
             { step: '02', icon: UserPlusIcon, label: 'Invite your team', desc: 'Share the room ID and access code. Teammates join instantly — no account setup required.' },
             { step: '03', icon: Layout, label: 'Code, discuss, draw, run', desc: 'Edit code together, chat in real-time, sketch ideas, and execute code without leaving the browser.' },
           ].map(({ step, icon: Icon, label, desc }) => (
@@ -292,34 +336,35 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Built For */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-16 sm:pb-24">
+      {/* FAQ */}
+      <section data-reveal className="max-w-3xl mx-auto px-4 sm:px-6 pb-16 sm:pb-24">
         <div className="text-center mb-10 sm:mb-14">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-3 sm:mb-4">Built For</h2>
-          <p className="text-gray-400 text-sm sm:text-base md:text-lg max-w-2xl mx-auto">From hackathons to classrooms — CodeSync adapts to the way you work.</p>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-3 sm:mb-4">Frequently Asked Questions</h2>
+          <p className="text-gray-400 text-sm sm:text-base md:text-lg max-w-2xl mx-auto">Everything you need to know about CodeSync.</p>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-          {[
-            { icon: Zap, label: 'Hackathon Teams', desc: 'Spin up a workspace in seconds and start building.', color: 'from-purple-500/20 to-purple-600/10 border-purple-500/20 text-purple-300' },
-            { icon: Users, label: 'College Projects', desc: 'Collaborate on assignments without merging conflicts.', color: 'from-blue-500/20 to-blue-600/10 border-blue-500/20 text-blue-300' },
-            { icon: Monitor, label: 'Coding Interviews', desc: 'Share a live editor for real-time technical assessments.', color: 'from-emerald-500/20 to-emerald-600/10 border-emerald-500/20 text-emerald-300' },
-            { icon: BookOpen, label: 'Peer Learning', desc: 'Learn together with pair programming and whiteboarding.', color: 'from-amber-500/20 to-amber-600/10 border-amber-500/20 text-amber-300' },
-            { icon: GraduationCap, label: 'Classroom Demos', desc: 'Teach code interactively with live execution and chat.', color: 'from-cyan-500/20 to-cyan-600/10 border-cyan-500/20 text-cyan-300' },
-          ].map(({ icon: Icon, label, desc, color }) => (
-            <div key={label} className={`glass-panel p-4 sm:p-5 rounded-xl sm:rounded-2xl border border-white/10 bg-gradient-to-br ${color} transition-all duration-300 hover:-translate-y-1 hover:shadow-lg group text-center sm:text-left`}>
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-white/5 flex items-center justify-center mb-3 sm:mb-4 mx-auto sm:mx-0 group-hover:scale-110 transition-transform">
-                <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
+        <div className="space-y-3">
+          {FAQ_DATA.map(({ q, a }, i) => (
+            <div key={i} className="glass-panel rounded-2xl border border-white/10 overflow-hidden transition-all duration-300">
+              <button
+                onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                className="w-full flex items-center justify-between gap-3 px-5 sm:px-6 py-4 sm:py-5 text-left transition-colors hover:bg-white/[0.02]"
+              >
+                <span className="text-sm sm:text-base font-semibold text-white">{q}</span>
+                <ChevronDown className={`w-4 h-4 sm:w-5 sm:h-5 text-gray-400 shrink-0 transition-transform duration-300 ${openFaq === i ? 'rotate-180' : ''}`} />
+              </button>
+              <div className="grid transition-[grid-template-rows] duration-300" style={{ gridTemplateRows: openFaq === i ? '1fr' : '0fr' }}>
+                <div className="overflow-hidden min-h-0">
+                  <p className="px-5 sm:px-6 pb-4 sm:pb-5 text-sm sm:text-base text-gray-400 leading-relaxed">{a}</p>
+                </div>
               </div>
-              <h3 className="text-sm sm:text-base font-bold text-white mb-1 sm:mb-2">{label}</h3>
-              <p className="text-xs sm:text-sm text-gray-400 leading-relaxed">{desc}</p>
             </div>
           ))}
         </div>
       </section>
 
       {/* Final CTA */}
-      <section className="max-w-4xl mx-auto px-4 sm:px-6 pb-16 sm:pb-24">
+      <section data-reveal className="max-w-4xl mx-auto px-4 sm:px-6 pb-16 sm:pb-24">
         <div className="glass-panel rounded-3xl sm:rounded-[2.5rem] border border-white/10 overflow-hidden relative">
           <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-emerald-500/10 pointer-events-none"></div>
           <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-indigo-400/50 to-transparent"></div>
@@ -376,14 +421,6 @@ const Landing = () => {
     </div>
   );
 };
-
-const PlusIcon = ({ className }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10" />
-    <line x1="12" y1="8" x2="12" y2="16" />
-    <line x1="8" y1="12" x2="16" y2="12" />
-  </svg>
-);
 
 const UserPlusIcon = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

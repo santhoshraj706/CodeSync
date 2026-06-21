@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useContext } from 'react';
 import { SocketContext } from '../context/SocketContext';
 import { AuthContext } from '../context/AuthContext';
-import { Send, Smile, MessageSquare, Search, Volume2, VolumeX, Download, ArrowDown, Reply, Edit2, X } from 'lucide-react';
+import { Send, Smile, MessageSquare, Search, Volume2, VolumeX, Download, ArrowDown, Reply, Edit2, X, FileText, Loader2, Sparkles } from 'lucide-react';
 import EmojiPicker from 'emoji-picker-react';
+import api from '../utils/api';
 
 const playNotificationSound = () => {
   try {
@@ -31,14 +32,17 @@ const playNotificationSound = () => {
   }
 };
 
-const Chat = ({ roomId, onMessagesUpdate }) => {
-  const [messages, setMessages] = useState([]);
+const Chat = ({ roomId, messages = [], setMessages, onMessagesUpdate }) => {
   const [message, setMessage] = useState('');
   const [showEmoji, setShowEmoji] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [isMuted, setIsMuted] = useState(false);
   const [replyingTo, setReplyingTo] = useState(null);
   const [editingMessage, setEditingMessage] = useState(null);
+  const [showSummary, setShowSummary] = useState(false);
+  const [summaryContent, setSummaryContent] = useState('');
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryError, setSummaryError] = useState('');
   const socket = useContext(SocketContext);
   const { user } = useContext(AuthContext);
   const chatContainerRef = useRef(null);
@@ -46,39 +50,20 @@ const Chat = ({ roomId, onMessagesUpdate }) => {
   useEffect(() => {
     if (!socket) return;
 
-    const handleHistory = (history) => {
-      setMessages(history);
-    };
-
     const handleMessage = (msg) => {
-      setMessages((prev) => {
-        const updated = [...prev, msg];
-        onMessagesUpdate?.(updated);
-        return updated;
-      });
-      
       // Play a soft notification chime if message is from another team member
       if (!isMuted && user && msg.username !== user.username) {
         playNotificationSound();
       }
     };
 
-    const handleEditMessage = ({ id, newMessage }) => {
-      setMessages((prev) => prev.map(msg => 
-        msg.id === id ? { ...msg, message: newMessage, isEdited: true } : msg
-      ));
-    };
-
-    socket.on('chat-history', handleHistory);
     socket.on('chat-message', handleMessage);
-    socket.on('edit-message', handleEditMessage);
 
     return () => {
-      socket.off('chat-history', handleHistory);
       socket.off('chat-message', handleMessage);
-      socket.off('edit-message', handleEditMessage);
     };
-  }, [socket, user, isMuted, onMessagesUpdate]);
+  }, [socket, user, isMuted]);
+
 
   useEffect(() => {
     if (chatContainerRef.current) {
@@ -137,6 +122,21 @@ const Chat = ({ roomId, onMessagesUpdate }) => {
     });
   };
 
+  const handleSummarize = async () => {
+    if (messages.length === 0) return;
+    setShowSummary(true);
+    setSummaryLoading(true);
+    setSummaryError('');
+    try {
+      const res = await api.post('/ai/summarize-chat', { messages });
+      setSummaryContent(res.data.result);
+    } catch {
+      setSummaryError('Failed to generate summary. Please try again.');
+    } finally {
+      setSummaryLoading(false);
+    }
+  };
+
   const exportChat = () => {
     if (messages.length === 0) return;
     const content = messages.map((msg) => {
@@ -180,6 +180,15 @@ const Chat = ({ roomId, onMessagesUpdate }) => {
         <div className="flex items-center gap-2">
           <button
             type="button"
+            onClick={handleSummarize}
+            disabled={messages.length === 0}
+            className="p-2 rounded-xl border bg-white/5 border-white/5 text-slate-400 hover:text-indigo-300 hover:bg-indigo-500/10 transition-all disabled:opacity-30 disabled:hover:bg-white/5"
+            title="Summarize chat with AI"
+          >
+            <FileText className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
             onClick={exportChat}
             disabled={messages.length === 0}
             className="p-2 rounded-xl border bg-white/5 border-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-all disabled:opacity-30 disabled:hover:bg-white/5"
@@ -198,7 +207,7 @@ const Chat = ({ roomId, onMessagesUpdate }) => {
         </div>
       </div>
 
-      <div className="px-4 py-3 border-b border-white/5 bg-slate-950/30">
+      <div className={`px-4 py-3 border-b border-white/5 bg-slate-950/30 ${showSummary ? 'hidden' : ''}`}>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
           <input
@@ -211,8 +220,58 @@ const Chat = ({ roomId, onMessagesUpdate }) => {
         </div>
       </div>
 
+      {/* AI Summary Overlay */}
+      {showSummary && (
+        <div className="absolute inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex flex-col animate-fadeIn">
+          <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between bg-gradient-to-r from-indigo-500/10 to-blue-500/10 shrink-0">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 bg-indigo-500/15 rounded-xl border border-indigo-500/20 text-indigo-400">
+                <Sparkles className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="font-semibold text-sm text-white">AI Chat Summary</h4>
+                <p className="text-[10px] text-indigo-300 font-medium uppercase tracking-wider">Powered by Gemini</p>
+              </div>
+            </div>
+            <button onClick={() => { setShowSummary(false); setSummaryContent(''); setSummaryError(''); }} className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-5 custom-scrollbar">
+            {summaryLoading ? (
+              <div className="flex flex-col items-center justify-center h-full gap-3">
+                <div className="relative">
+                  <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
+                  <Sparkles className="w-4 h-4 text-indigo-300 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                </div>
+                <p className="text-xs text-slate-400 italic">Analyzing your team chat...</p>
+              </div>
+            ) : summaryError ? (
+              <div className="flex flex-col items-center justify-center h-full gap-3">
+                <div className="p-3 bg-red-500/10 rounded-2xl border border-red-500/20">
+                  <X className="w-6 h-6 text-red-400" />
+                </div>
+                <p className="text-xs text-red-300 text-center max-w-[250px]">{summaryError}</p>
+                <button onClick={handleSummarize} className="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold rounded-xl transition-colors">
+                  Try Again
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {summaryContent.split('\n').filter(l => l.trim()).map((line, i) => (
+                  <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/5">
+                    <span className="w-5 h-5 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-[10px] font-bold text-white shrink-0 mt-0.5">{i + 1}</span>
+                    <p className="text-sm text-slate-200 leading-relaxed">{line.replace(/^[•\-\*]\s*/, '')}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Message Area */}
-      <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar bg-slate-950/20 relative">
+      <div ref={chatContainerRef} className={`flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar bg-slate-950/20 relative ${showSummary ? 'hidden' : ''}`}>
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center p-6 space-y-3">
             <div className="p-3 bg-white/5 rounded-2xl border border-white/5 text-gray-400">
@@ -307,7 +366,7 @@ const Chat = ({ roomId, onMessagesUpdate }) => {
       )}
 
       {/* Typing Indicator & Input Form */}
-      <div className="bg-slate-950/60 border-t border-white/10 relative z-40 backdrop-blur-xl">
+      <div className={`bg-slate-950/60 border-t border-white/10 relative z-40 backdrop-blur-xl ${showSummary ? 'hidden' : ''}`}>
         {messages.length > 4 && (
           <button
             type="button"

@@ -30,7 +30,7 @@ const getContrastColor = (hexColor) => {
   return (yiq >= 128) ? '#1e293b' : '#ffffff';
 };
 
-const Whiteboard = ({ roomId, isVisible }) => {
+const Whiteboard = ({ roomId, isVisible, sharedStrokesRef }) => {
   const canvasRef = useRef(null);
   const contextRef = useRef(null);
   const socket = useContext(SocketContext);
@@ -43,7 +43,8 @@ const Whiteboard = ({ roomId, isVisible }) => {
   const [snapshotData, setSnapshotData] = useState(null);
   const [undoStack, setUndoStack] = useState([]);
   const lastPosRef = useRef({ x: 0, y: 0 });
-  const strokesRef = useRef([]);
+  const localStrokesRef = useRef([]);
+  const strokesRef = sharedStrokesRef || localStrokesRef;
 
   // Track canvas size in state to trigger React re-renders for absolute elements (like Sticky Notes)
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
@@ -193,6 +194,13 @@ const Whiteboard = ({ roomId, isVisible }) => {
       socket.off('whiteboard-clear', onClear);
     };
   }, [socket]);
+
+  // Rebuild sticky notes from existing history on mount (crucial for tab switching sync)
+  useEffect(() => {
+    if (strokesRef.current && strokesRef.current.length > 0) {
+      rebuildNotesFromHistory(strokesRef.current);
+    }
+  }, []);
 
   // Use ResizeObserver to detect parent panel resize (handles resizable panels & window resize)
   useEffect(() => {

@@ -2,6 +2,7 @@ const Room = require('../models/Room');
 
 const roomUsers = {}; // { roomId: [{ username, socketId }] } — active connections only (in-memory)
 const roomStates = {}; // { roomId: { code: string, language: string, messages: Array, strokes: Array } } - active room state cache
+const roomPresenters = {}; // { roomId: username } - tracks active presenter
 
 const socketHandler = (io) => {
   io.on('connection', (socket) => {
@@ -23,44 +24,62 @@ const socketHandler = (io) => {
       // Broadcast full active users list to EVERYONE in the room
       io.to(roomId).emit('active-users', roomUsers[roomId]);
 
-      // Initialize in-memory cache for this room if it doesn't exist
-      if (!roomStates[roomId]) {
+      // --- Room State Loading ---
+      // Always load from DB if the in-memory cache is absent or has never
+      // received real data (i.e. still on default values with no live peers).
+      const cacheExists = !!roomStates[roomId];
+      const cacheIsWarm = cacheExists && (
+        roomStates[roomId].code !== '// Write your code here...' ||
+        roomStates[roomId].messages.length > 0 ||
+        roomStates[roomId].strokes.length > 0
+      );
+
+      if (!cacheExists) {
+        // First person into this room (or server restarted) — init empty cache first
         roomStates[roomId] = {
           code: '// Write your code here...',
           language: 'javascript',
           messages: [],
-          strokes: []
+          strokes: [],
+          testCases: [],
+          runHistory: [],
+          codeComments: []
         };
+      }
 
-        // Try to load persisted state from MongoDB as background task
+      if (!cacheIsWarm) {
+        // Cache is cold — load fresh from MongoDB before sending to client
         try {
           const room = await Room.findOne({ roomId });
           if (room && roomStates[roomId]) {
-            // Only update cache if it hasn't been heavily modified in-memory yet
-            if (roomStates[roomId].code === '// Write your code here...' && roomStates[roomId].messages.length === 0) {
-              roomStates[roomId].code = room.lastCode || '// Write your code here...';
-              roomStates[roomId].language = room.language || 'javascript';
-              roomStates[roomId].messages = room.messages || [];
-              roomStates[roomId].strokes = room.strokes || [];
-            }
+            roomStates[roomId].code = room.lastCode || '// Write your code here...';
+            roomStates[roomId].language = room.language || 'javascript';
+            roomStates[roomId].messages = room.messages || [];
+            roomStates[roomId].strokes = room.strokes || [];
+            roomStates[roomId].testCases = room.testCases || [];
+            roomStates[roomId].runHistory = room.runHistory || [];
+            roomStates[roomId].codeComments = room.codeComments || [];
           }
         } catch (err) {
           console.error('Error loading room state from MongoDB:', err.message);
         }
       }
 
-      // Instantly send cached in-memory state to the joining user
+      // Send full cached state to the joining user
       socket.emit('room-state', {
         code: roomStates[roomId].code,
         language: roomStates[roomId].language
       });
 
-      if (roomStates[roomId].messages.length > 0) {
-        socket.emit('chat-history', roomStates[roomId].messages);
-      }
+      // Always emit all history so clients initialise correctly on join/refresh
+      socket.emit('chat-history', roomStates[roomId].messages);
+      socket.emit('whiteboard-history', roomStates[roomId].strokes);
+      socket.emit('test-cases-history', roomStates[roomId].testCases);
+      socket.emit('run-history', roomStates[roomId].runHistory);
+      socket.emit('code-comments-history', roomStates[roomId].codeComments);
 
-      if (roomStates[roomId].strokes.length > 0) {
-        socket.emit('whiteboard-history', roomStates[roomId].strokes);
+      if (roomPresenters[roomId]) {
+        socket.emit('start-presenting', { username: roomPresenters[roomId] });
       }
 
       console.log(`${username} joined room ${roomId}`);
@@ -207,6 +226,74 @@ const socketHandler = (io) => {
       Room.updateOne({ roomId }, { strokes: [] }).catch(err => console.error('DB Error clearing board:', err.message));
     });
 
+    socket.on('start-presenting', ({ roomId, username }) => {
+      roomPresenters[roomId] = username;
+      socket.to(roomId).emit('start-presenting', { username });
+    });
+
+    socket.on('stop-presenting', ({ roomId }) => {
+      delete roomPresenters[roomId];
+      socket.to(roomId).emit('stop-presenting');
+    });
+
+    socket.on('presenter-sync', ({ roomId, cursor, scroll }) => {
+      // Only broadcast; we don't store scroll/cursor in DB
+      socket.to(roomId).emit('presenter-sync', { cursor, scroll });
+    });
+
+    // --- Phase 2: Test Cases ---
+    socket.on('save-test-cases', ({ roomId, testCases }) => {
+      if (roomStates[roomId]) {
+        roomStates[roomId].testCases = testCases;
+      }
+      socket.to(roomId).emit('test-cases-sync', testCases);
+      Room.updateOne({ roomId }, { testCases }).catch(err => console.error(err));
+    });
+
+    socket.on('add-run-history', ({ roomId, runResult }) => {
+      if (roomStates[roomId]) {
+        roomStates[roomId].runHistory.unshift(runResult);
+        if (roomStates[roomId].runHistory.length > 20) roomStates[roomId].runHistory.pop();
+      }
+      socket.to(roomId).emit('new-run-history', runResult);
+      Room.updateOne({ roomId }, { 
+        $push: { runHistory: { $each: [runResult], $position: 0, $slice: 20 } } 
+      }).catch(err => console.error(err));
+    });
+
+    // --- Phase 3: Code Comments ---
+    socket.on('add-code-comment', ({ roomId, comment }) => {
+      if (roomStates[roomId]) {
+        roomStates[roomId].codeComments.push(comment);
+      }
+      socket.to(roomId).emit('new-code-comment', comment);
+      Room.updateOne({ roomId }, { $push: { codeComments: comment } }).catch(err => console.error(err));
+    });
+
+    socket.on('resolve-code-comment', ({ roomId, commentId }) => {
+      if (roomStates[roomId]) {
+        const c = roomStates[roomId].codeComments.find(c => c.id === commentId);
+        if (c) c.resolved = true;
+      }
+      socket.to(roomId).emit('resolve-code-comment', commentId);
+      Room.updateOne(
+        { roomId, "codeComments.id": commentId },
+        { $set: { "codeComments.$.resolved": true } }
+      ).catch(err => console.error(err));
+    });
+
+    socket.on('reply-code-comment', ({ roomId, commentId, reply }) => {
+      if (roomStates[roomId]) {
+        const c = roomStates[roomId].codeComments.find(c => c.id === commentId);
+        if (c) c.replies.push(reply);
+      }
+      socket.to(roomId).emit('reply-code-comment', { commentId, reply });
+      Room.updateOne(
+        { roomId, "codeComments.id": commentId },
+        { $push: { "codeComments.$.replies": reply } }
+      ).catch(err => console.error(err));
+    });
+
     const leaveRoomHandler = (roomId, socketId) => {
       if (roomUsers[roomId]) {
         roomUsers[roomId] = roomUsers[roomId].filter(u => u.socketId !== socketId);
@@ -216,6 +303,7 @@ const socketHandler = (io) => {
         if (roomUsers[roomId].length === 0) {
           delete roomStates[roomId];
           delete roomUsers[roomId];
+          delete roomPresenters[roomId];
           console.log(`Cleaned up memory for inactive room: ${roomId}`);
         }
       }
@@ -224,6 +312,13 @@ const socketHandler = (io) => {
     socket.on('leave-room', ({ roomId, username }) => {
       socket.leave(roomId);
       leaveRoomHandler(roomId, socket.id);
+      
+      // If the presenter leaves, stop presenting
+      if (roomPresenters[roomId] === username) {
+        delete roomPresenters[roomId];
+        io.to(roomId).emit('stop-presenting');
+      }
+
       currentRoomId = null;
       console.log(`${username} left room ${roomId}`);
     });

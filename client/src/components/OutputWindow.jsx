@@ -1,7 +1,13 @@
-import React from 'react';
-import { Terminal, AlertCircle, CheckCircle2, Clock, Cpu } from 'lucide-react';
+import React, { useState } from 'react';
+import { Terminal, AlertCircle, CheckCircle2, Clock, Cpu, ChevronDown, ChevronUp } from 'lucide-react';
 
 const OutputWindow = ({ output, isExecuting }) => {
+  const [collapsed, setCollapsed] = useState({});
+
+  const toggleSection = (key) => {
+    setCollapsed(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
   if (isExecuting) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-indigo-400 opacity-90 animate-pulse">
@@ -31,32 +37,41 @@ const OutputWindow = ({ output, isExecuting }) => {
   return (
     <div className="flex flex-col space-y-3 h-full w-full">
       {output.stderr && (
-        <div className="bg-red-500/10 border border-red-500/20 p-3 rounded-xl animate-fadeIn">
-          <div className="flex items-center text-red-400 mb-2 pb-2 border-b border-red-500/10">
-            <AlertCircle className="w-4 h-4 mr-2" />
-            <span className="font-bold text-xs uppercase tracking-wider">Error</span>
-          </div>
-          <pre className="whitespace-pre-wrap text-red-300 text-sm font-mono leading-relaxed">{output.stderr}</pre>
+        <div className="bg-red-500/10 border border-red-500/20 rounded-xl animate-fadeIn overflow-hidden">
+          <button onClick={() => toggleSection('stderr')} className="flex items-center justify-between w-full p-3 pb-2 border-b border-red-500/10 hover:bg-red-500/5 transition-colors">
+            <div className="flex items-center text-red-400">
+              <AlertCircle className="w-4 h-4 mr-2" />
+              <span className="font-bold text-xs uppercase tracking-wider">Error</span>
+            </div>
+            {collapsed.stderr ? <ChevronUp className="w-3.5 h-3.5 text-red-400" /> : <ChevronDown className="w-3.5 h-3.5 text-red-400" />}
+          </button>
+          {!collapsed.stderr && <pre className="whitespace-pre-wrap text-red-300 text-sm font-mono leading-relaxed p-3 pt-2">{output.stderr}</pre>}
         </div>
       )}
       
       {output.compile_output && !output.stderr && (
-        <div className="bg-orange-500/10 border border-orange-500/20 p-3 rounded-xl animate-fadeIn">
-          <div className="flex items-center text-orange-400 mb-2 pb-2 border-b border-orange-500/10">
-            <AlertCircle className="w-4 h-4 mr-2" />
-            <span className="font-bold text-xs uppercase tracking-wider">Compile Error</span>
-          </div>
-          <pre className="whitespace-pre-wrap text-orange-300 text-sm font-mono leading-relaxed">{output.compile_output}</pre>
+        <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl animate-fadeIn overflow-hidden">
+          <button onClick={() => toggleSection('compile')} className="flex items-center justify-between w-full p-3 pb-2 border-b border-orange-500/10 hover:bg-orange-500/5 transition-colors">
+            <div className="flex items-center text-orange-400">
+              <AlertCircle className="w-4 h-4 mr-2" />
+              <span className="font-bold text-xs uppercase tracking-wider">Compile Error</span>
+            </div>
+            {collapsed.compile ? <ChevronUp className="w-3.5 h-3.5 text-orange-400" /> : <ChevronDown className="w-3.5 h-3.5 text-orange-400" />}
+          </button>
+          {!collapsed.compile && <pre className="whitespace-pre-wrap text-orange-300 text-sm font-mono leading-relaxed p-3 pt-2">{output.compile_output}</pre>}
         </div>
       )}
       
       {output.stdout && (
-        <div className="bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-xl animate-fadeIn">
-          <div className="flex items-center text-emerald-400 mb-2 pb-2 border-b border-emerald-500/10">
-            <CheckCircle2 className="w-4 h-4 mr-2" />
-            <span className="font-bold text-xs uppercase tracking-wider">Success Output</span>
-          </div>
-          <pre className="whitespace-pre-wrap text-emerald-300/90 text-sm font-mono leading-relaxed">{output.stdout}</pre>
+        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl animate-fadeIn overflow-hidden">
+          <button onClick={() => toggleSection('stdout')} className="flex items-center justify-between w-full p-3 pb-2 border-b border-emerald-500/10 hover:bg-emerald-500/5 transition-colors">
+            <div className="flex items-center text-emerald-400">
+              <CheckCircle2 className="w-4 h-4 mr-2" />
+              <span className="font-bold text-xs uppercase tracking-wider">Success Output</span>
+            </div>
+            {collapsed.stdout ? <ChevronUp className="w-3.5 h-3.5 text-emerald-400" /> : <ChevronDown className="w-3.5 h-3.5 text-emerald-400" />}
+          </button>
+          {!collapsed.stdout && <pre className="whitespace-pre-wrap text-emerald-300/90 text-sm font-mono leading-relaxed p-3 pt-2">{output.stdout}</pre>}
         </div>
       )}
       

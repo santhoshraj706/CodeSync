@@ -1,6 +1,7 @@
 const express = require('express');
 const router = Router = express.Router();
 const Room = require('../models/Room');
+const CodeFile = require('../models/CodeFile');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 
@@ -62,6 +63,27 @@ router.post('/create', auth, async (req, res) => {
     });
 
     await room.save();
+
+    // --- Scalable DB Foundation ---
+    // Auto-create a default CodeFile for this new room.
+    // This does NOT change anything visible to the user.
+    try {
+      const defaultFile = new CodeFile({
+        roomId: room._id,
+        filename: 'main.js',
+        language: 'javascript',
+        content: '// Write your code here...',
+        isDefault: true,
+      });
+      await defaultFile.save();
+      room.activeFile = defaultFile._id;
+      await room.save();
+      console.log(`[CodeFile] Created default file for room: ${roomId}`);
+    } catch (fileErr) {
+      // Non-fatal: room still works via lastCode fallback
+      console.error('[CodeFile] Failed to create default file:', fileErr.message);
+    }
+
     res.json(room);
   } catch (err) {
     console.error(err.message);
@@ -167,6 +189,33 @@ router.get('/:roomId', auth, async (req, res) => {
     if (!room.members.some(member => member._id.toString() === req.user.id)) {
       return res.status(403).json({ message: 'Not a member of this room' });
     }
+
+    // --- Backward Compatibility Migration ---
+    // If this room was created before the CodeFile refactor, create a
+    // default CodeFile from room.lastCode so future features have a file to work with.
+    if (!room.activeFile) {
+      try {
+        // Check if a file already exists for this room (e.g., from a previous partial run)
+        let existingFile = await CodeFile.findOne({ roomId: room._id, isDefault: true });
+        if (!existingFile) {
+          existingFile = new CodeFile({
+            roomId: room._id,
+            filename: 'main.js',
+            language: room.language || 'javascript',
+            content: room.lastCode || '// Write your code here...',
+            isDefault: true,
+          });
+          await existingFile.save();
+          console.log(`[CodeFile] Migrated legacy room to CodeFile: ${req.params.roomId}`);
+        }
+        room.activeFile = existingFile._id;
+        await room.save();
+      } catch (fileErr) {
+        // Non-fatal: existing code sync via room.lastCode continues to work
+        console.error('[CodeFile] Migration fallback failed:', fileErr.message);
+      }
+    }
+
     res.json(room);
   } catch (err) {
     console.error(err.message);

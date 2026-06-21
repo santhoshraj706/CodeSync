@@ -2,11 +2,19 @@ import React, { useEffect, useRef, useState, useContext, useCallback } from 'rea
 import MonacoEditor from '@monaco-editor/react';
 import { SocketContext } from '../context/SocketContext';
 import { Wand2, WrapText, Sparkles, Play, Loader2 } from 'lucide-react';
+import LineComments from './LineComments';
+import './editor-comments.css'; // Add CSS for glyphs
 
-const EditorComponent = ({ roomId, code, setCode, language, setLanguage, theme, showToast, fontSize = 14, onRunCode, isExecuting, onToggleAI }) => {
+const EditorComponent = ({ roomId, code, setCode, language, setLanguage, theme, showToast, fontSize = 14, onRunCode, isExecuting, onToggleAI, activePresenter, currentUser, codeComments, setCodeComments }) => {
   const socket = useContext(SocketContext);
   const editorRef = useRef(null);
+  const [isEditorReady, setIsEditorReady] = useState(false);
   const [wordWrap, setWordWrap] = useState('on');
+  
+  // Phase 3: Line Comments
+  const [activeCommentLine, setActiveCommentLine] = useState(null);
+  const [commentPanelPos, setCommentPanelPos] = useState({ top: 0, left: 0 });
+  const decorationsRef = useRef([]);
   
   // Keep track of the latest code value (either received from remote or sent locally)
   const latestCodeRef = useRef(code);
@@ -69,9 +77,83 @@ const EditorComponent = ({ roomId, code, setCode, language, setLanguage, theme, 
     }
   }, [socket, roomId, setCode]);
 
-  const handleEditorDidMount = useCallback((editor) => {
+  const handleEditorDidMount = useCallback((editor, monaco) => {
     editorRef.current = editor;
+    setIsEditorReady(true);
+
+    editor.onMouseDown((e) => {
+      // MouseTargetType.GUTTER_GLYPH_MARGIN is 2, GUTTER_LINE_NUMBERS is 3
+      if (e.target.type === 2 || e.target.type === 3) {
+        const line = e.target.position.lineNumber;
+        // Position panel near the click
+        const top = e.event.posy;
+        const left = e.event.posx + 20; // Slightly right of the gutter
+        setActiveCommentLine(line);
+        setCommentPanelPos({ top, left });
+      }
+    });
   }, []);
+
+  // Presenter Mode Logic
+  useEffect(() => {
+    if (!socket || !editorRef.current) return;
+    const editor = editorRef.current;
+
+    let cursorListener, scrollListener;
+
+    if (activePresenter === currentUser) {
+      // I am presenting -> broadcast my movements
+      cursorListener = editor.onDidChangeCursorPosition((e) => {
+        socket.emit('presenter-sync', { roomId, cursor: e.position, scroll: editor.getScrollTop() });
+      });
+      scrollListener = editor.onDidScrollChange((e) => {
+        socket.emit('presenter-sync', { roomId, cursor: editor.getPosition(), scroll: e.scrollTop });
+      });
+    } else if (activePresenter) {
+      // Someone else is presenting -> listen to their movements
+      const handlePresenterSync = ({ cursor, scroll }) => {
+        if (cursor) {
+          editor.setPosition(cursor);
+          editor.revealPositionInCenter(cursor, 0); // 0 = Smooth scrolling
+        }
+        if (scroll !== undefined && scroll !== null) {
+          editor.setScrollTop(scroll);
+        }
+      };
+      socket.on('presenter-sync', handlePresenterSync);
+      
+      return () => {
+        socket.off('presenter-sync', handlePresenterSync);
+      };
+    }
+
+    return () => {
+      if (cursorListener) cursorListener.dispose();
+      if (scrollListener) scrollListener.dispose();
+    };
+  }, [socket, activePresenter, currentUser, roomId, isEditorReady]);
+
+  // Update decorations when comments change
+  useEffect(() => {
+    if (!editorRef.current || !codeComments) return;
+    const editor = editorRef.current;
+    
+    // Group comments by line number and filter unresolved
+    const linesWithComments = new Set(
+      codeComments.filter(c => !c.resolved).map(c => c.lineNumber)
+    );
+
+    const newDecorations = Array.from(linesWithComments).map(line => ({
+      range: new window.monaco.Range(line, 1, line, 1),
+      options: {
+        isWholeLine: false,
+        glyphMarginClassName: 'comment-glyph-icon',
+        glyphMarginHoverMessage: { value: 'Click to view comments' }
+      }
+    }));
+
+    decorationsRef.current = editor.deltaDecorations(decorationsRef.current, newDecorations);
+  }, [codeComments, isEditorReady]);
 
   const formatCode = () => {
     if (editorRef.current) {
@@ -106,9 +188,35 @@ const EditorComponent = ({ roomId, code, setCode, language, setLanguage, theme, 
           wordWrap: wordWrap,
           automaticLayout: true,
           formatOnPaste: true,
+          glyphMargin: true,
+          lineDecorationsWidth: 10,
         }}
       />
       
+      {activeCommentLine !== null && (
+        <LineComments
+          line={activeCommentLine}
+          comments={(codeComments || []).filter(c => c.lineNumber === activeCommentLine)}
+          position={commentPanelPos}
+          onClose={() => setActiveCommentLine(null)}
+          currentUser={currentUser}
+          onAddComment={(line, text) => {
+            const newComment = { id: Date.now().toString(), lineNumber: line, text, username: currentUser, timestamp: Date.now().toString(), resolved: false, replies: [] };
+            setCodeComments(prev => [...prev, newComment]);
+            socket.emit('add-code-comment', { roomId, comment: newComment });
+          }}
+          onResolve={(commentId) => {
+            setCodeComments(prev => prev.map(c => c.id === commentId ? { ...c, resolved: true } : c));
+            socket.emit('resolve-code-comment', { roomId, commentId });
+          }}
+          onReply={(commentId, text) => {
+            const reply = { id: Date.now().toString(), text, username: currentUser, timestamp: Date.now().toString() };
+            setCodeComments(prev => prev.map(c => c.id === commentId ? { ...c, replies: [...(c.replies || []), reply] } : c));
+            socket.emit('reply-code-comment', { roomId, commentId, reply });
+          }}
+        />
+      )}
+
       {/* Floating Action Bar */}
       <div className="absolute bottom-6 right-8 flex items-center space-x-2 opacity-20 hover:opacity-100 group-hover:opacity-100 transition-opacity duration-300 z-10">
         <button

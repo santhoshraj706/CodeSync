@@ -206,7 +206,7 @@ const Dashboard = () => {
         <div className="grid lg:grid-cols-2 gap-8 animate-fadeIn animate-delay-100">
           
           {/* Create Room Card */}
-          <div className="glass-panel p-8 sm:p-10 rounded-[2rem] hover:border-indigo-500/40 transition-all duration-500 shadow-xl hover:shadow-[0_20px_50px_rgba(99,102,241,0.15)] group relative overflow-hidden">
+          <div className="glass-panel p-8 sm:p-10 rounded-[2rem] hover:border-indigo-500/40 transition-all duration-500 shadow-xl hover:-translate-y-1 hover:shadow-[0_20px_50px_rgba(99,102,241,0.15)] group relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-bl-full pointer-events-none group-hover:bg-indigo-500/20 transition-colors duration-500"></div>
             
             <h2 className="text-2xl font-extrabold mb-8 flex items-center text-white tracking-tight">
@@ -273,7 +273,7 @@ const Dashboard = () => {
           </div>
 
           {/* Join Room Card */}
-          <div className="glass-panel p-8 sm:p-10 rounded-[2rem] hover:border-emerald-500/40 transition-all duration-500 shadow-xl hover:shadow-[0_20px_50px_rgba(16,185,129,0.15)] group relative overflow-hidden">
+          <div className="glass-panel p-8 sm:p-10 rounded-[2rem] hover:border-emerald-500/40 transition-all duration-500 shadow-xl hover:-translate-y-1 hover:shadow-[0_20px_50px_rgba(16,185,129,0.15)] group relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-bl-full pointer-events-none group-hover:bg-emerald-500/20 transition-colors duration-500"></div>
 
             <h2 className="text-2xl font-extrabold mb-8 flex items-center text-white tracking-tight">

@@ -246,7 +246,7 @@ const Room = () => {
       {/* Left Panel: Users & Room Info */}
       {showLeftPanel && (!isMobile || mobileTab === 'users') && (
         <div 
-          className="glass-panel rounded-2xl flex flex-col overflow-hidden border-white/10 shadow-2xl relative z-10 min-h-0"
+          className="glass-panel rounded-2xl flex flex-col overflow-hidden border-white/10 shadow-2xl relative z-10 min-h-0 animate-fadeIn"
           style={isMobile ? { width: '100%', flex: 1 } : { width: `${leftWidth}px`, flexShrink: 0 }}
         >
           <div className="p-5 border-b border-white/10 bg-white/5 backdrop-blur-md shrink-0 flex items-center justify-between">
@@ -366,7 +366,7 @@ const Room = () => {
       {/* Center: Editor / Whiteboard & Output */}
       {(!isMobile || mobileTab === 'workspace') && (
         <div 
-          className="flex-1 flex flex-col relative z-10 min-h-0 min-w-0"
+          className="flex-1 flex flex-col relative z-10 min-h-0 min-w-0 animate-fadeIn animate-delay-100"
           style={isMobile ? { flex: 1 } : {}}
         >
           
@@ -488,7 +488,7 @@ const Room = () => {
                 <button
                   onClick={handleRunCode}
                   disabled={isExecuting}
-                  className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 border border-emerald-400/20 shadow-[0_4px_15px_rgba(16,185,129,0.2)] text-white px-3 md:px-5 py-1.5 md:py-2 rounded-xl flex items-center text-xs md:text-sm font-semibold transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:transform-none"
+                  className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 border border-emerald-400/20 shadow-[0_4px_15px_rgba(16,185,129,0.2)] hover:shadow-[0_4px_25px_rgba(16,185,129,0.4)] text-white px-3 md:px-5 py-1.5 md:py-2 rounded-xl flex items-center text-xs md:text-sm font-semibold transition-all hover:scale-105 disabled:opacity-50 disabled:transform-none"
                 >
                   <Play className={`w-3.5 h-3.5 mr-1.5 ${isExecuting ? 'animate-pulse' : ''}`} /> 
                   {isExecuting ? 'Running...' : 'Run'}
@@ -599,7 +599,7 @@ const Room = () => {
       {/* Right Panel: Chat */}
       {showRightPanel && (!isMobile || mobileTab === 'chat') && (
         <div 
-          className="flex flex-col relative z-10 min-h-0"
+          className="flex flex-col relative z-10 min-h-0 animate-fadeIn animate-delay-200"
           style={isMobile ? { width: '100%', flex: 1 } : { width: `${rightWidth}px`, flexShrink: 0 }}
         >
           <Chat roomId={roomId} onMessagesUpdate={setChatMessagesForAI} />

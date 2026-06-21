@@ -10,6 +10,7 @@ const EditorComponent = ({ roomId, code, setCode, language, setLanguage, theme, 
   const editorRef = useRef(null);
   const [isEditorReady, setIsEditorReady] = useState(false);
   const [wordWrap, setWordWrap] = useState('on');
+  const typingTimerRef = useRef(null);
   
   // Phase 3: Line Comments
   const [activeCommentLine, setActiveCommentLine] = useState(null);
@@ -63,17 +64,20 @@ const EditorComponent = ({ roomId, code, setCode, language, setLanguage, theme, 
 
   const handleEditorChange = useCallback((value) => {
     const val = value ?? '';
-    // If the value is identical to the last synced/sent code, ignore it (prevents echo loops)
     if (val === latestCodeRef.current) {
       return;
     }
 
     latestCodeRef.current = val;
     setCode(val);
-    
-    // Broadcast to other users immediately
+
     if (socket) {
       socket.emit('code-change', { roomId, code: val });
+      socket.emit('user-editing', { roomId });
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+      typingTimerRef.current = setTimeout(() => {
+        socket.emit('user-idle', { roomId });
+      }, 2000);
     }
   }, [socket, roomId, setCode]);
 

@@ -19,7 +19,7 @@ const socketHandler = (io) => {
       // Track active socket connections in memory
       if (!roomUsers[roomId]) roomUsers[roomId] = [];
       roomUsers[roomId] = roomUsers[roomId].filter(u => u.socketId !== socket.id);
-      roomUsers[roomId].push({ username, socketId: socket.id });
+      roomUsers[roomId].push({ username, socketId: socket.id, isEditing: false });
 
       // Broadcast full active users list to EVERYONE in the room
       io.to(roomId).emit('active-users', roomUsers[roomId]);
@@ -321,6 +321,24 @@ const socketHandler = (io) => {
 
       currentRoomId = null;
       console.log(`${username} left room ${roomId}`);
+    });
+
+    socket.on('user-editing', ({ roomId }) => {
+      if (roomUsers[roomId]) {
+        roomUsers[roomId] = roomUsers[roomId].map(u =>
+          u.socketId === socket.id ? { ...u, isEditing: true } : u
+        );
+        io.to(roomId).emit('active-users', roomUsers[roomId]);
+      }
+    });
+
+    socket.on('user-idle', ({ roomId }) => {
+      if (roomUsers[roomId]) {
+        roomUsers[roomId] = roomUsers[roomId].map(u =>
+          u.socketId === socket.id ? { ...u, isEditing: false } : u
+        );
+        io.to(roomId).emit('active-users', roomUsers[roomId]);
+      }
     });
 
     socket.on('disconnecting', () => {

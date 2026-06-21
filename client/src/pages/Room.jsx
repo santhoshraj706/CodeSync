@@ -10,7 +10,7 @@ import TestRunner from '../components/TestRunner';
 import AIAssistant from '../components/AIAssistant';
 import api from '../utils/api';
 import confetti from 'canvas-confetti';
-import { Users, Code, PenTool, Play, LogOut, Copy, Hash, MessageSquare, Download, Wifi, WifiOff, CheckCircle2, AlertCircle, Keyboard, X, Sparkles, PanelBottom, Maximize2, Minimize2, Settings2, Plus, Minus, MonitorPlay, MonitorStop, Terminal, Layers, ChevronDown, DoorOpen } from 'lucide-react';
+import { Users, Code, PenTool, Play, LogOut, Copy, Hash, MessageSquare, Download, Wifi, WifiOff, CheckCircle2, AlertCircle, Keyboard, X, Sparkles, PanelBottom, Maximize2, Minimize2, Settings2, Plus, Minus, MonitorPlay, MonitorStop, Terminal, Layers, ChevronDown, DoorOpen, Loader2 } from 'lucide-react';
 
 const Room = () => {
   const { roomId } = useParams();
@@ -38,6 +38,10 @@ const Room = () => {
   const [showBottomPanel, setShowBottomPanel] = useState(true);
   const [editorFontSize, setEditorFontSize] = useState(14);
   const [activePresenter, setActivePresenter] = useState(null);
+  const [activePreset, setActivePreset] = useState('coding');
+  const [presetAnimating, setPresetAnimating] = useState(null);
+  const [isRoomReady, setIsRoomReady] = useState(false);
+  const [isWhiteboardLoading, setIsWhiteboardLoading] = useState(false);
 
   const [messages, setMessages] = useState([]);
   const whiteboardStrokesRef = useRef([]);
@@ -60,14 +64,47 @@ const Room = () => {
     setTimeout(() => setToast(null), 3000);
   };
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 1024);
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  const applyPreset = (preset) => {
+    setPresetAnimating(preset);
+    setTimeout(() => setPresetAnimating(null), 600);
+    setActivePreset(preset);
+    switch (preset) {
+      case 'coding':
+        setActiveTab('editor');
+        setShowLeftPanel(true);
+        setShowRightPanel(true);
+        setShowBottomPanel(true);
+        setLeftWidth(280);
+        setRightWidth(280);
+        setIsOutputExpanded(false);
+        break;
+      case 'discussion':
+        setActiveTab('editor');
+        setShowLeftPanel(true);
+        setShowRightPanel(true);
+        setShowBottomPanel(true);
+        setLeftWidth(280);
+        setRightWidth(420);
+        setIsOutputExpanded(false);
+        break;
+      case 'whiteboard':
+        setActiveTab('whiteboard');
+        setShowLeftPanel(true);
+        setShowRightPanel(true);
+        setShowBottomPanel(false);
+        setLeftWidth(200);
+        setRightWidth(280);
+        setIsOutputExpanded(false);
+        break;
+      case 'focus':
+        setActiveTab('editor');
+        setShowLeftPanel(false);
+        setShowRightPanel(false);
+        setShowBottomPanel(false);
+        setIsOutputExpanded(false);
+        break;
+    }
+  };
 
   const startResizeLeft = (e) => {
     e.preventDefault();
@@ -120,6 +157,7 @@ const Room = () => {
     const joinRoom = () => {
       socket.emit('join-room', { roomId, username: user.username });
       setIsConnected(true);
+      setIsRoomReady(true);
     };
 
     if (socket.connected) {
@@ -314,10 +352,65 @@ const Room = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [code, language]);
 
+  useEffect(() => {
+    if (activeTab === 'whiteboard') {
+      setIsWhiteboardLoading(true);
+      const timer = setTimeout(() => setIsWhiteboardLoading(false), 800);
+      return () => clearTimeout(timer);
+    }
+  }, [activeTab]);
+
   return (
     <div className="flex h-screen w-screen bg-[#070a14] text-white overflow-hidden font-sans selection:bg-indigo-500/30 flex-col md:flex-row p-4 gap-2 box-border relative">
       
       <div className="fixed inset-0 bg-gradient-to-br from-indigo-950/20 via-transparent to-purple-950/20 pointer-events-none z-0"></div>
+
+      {/* Initial Loading Overlay */}
+      {!isRoomReady && (
+        <div className="absolute inset-0 z-[100] bg-[#070a14] flex flex-col items-center justify-center animate-fadeIn">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-2xl shadow-indigo-500/30 mb-6 animate-pulse">
+            <Code className="w-7 h-7 text-white" />
+          </div>
+          <div className="flex items-center gap-2.5 mb-2">
+            <Loader2 className="w-4 h-4 text-indigo-400 animate-spin" />
+            <span className="text-sm font-medium text-slate-300">Connecting to room...</span>
+          </div>
+          <div className="flex gap-1.5 mt-3">
+            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{animationDelay: '0ms'}}></span>
+            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{animationDelay: '150ms'}}></span>
+            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{animationDelay: '300ms'}}></span>
+          </div>
+        </div>
+      )}
+
+      {/* Reconnection Banner */}
+      {isRoomReady && !isConnected && (
+        <div className="absolute top-0 left-0 right-0 z-[90] animate-fadeIn">
+          <div className="mx-4 mt-4 px-5 py-3 bg-amber-500/10 border border-amber-500/25 rounded-2xl backdrop-blur-xl flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-2 h-2 rounded-full bg-amber-400 animate-ping"></div>
+              <div>
+                <p className="text-sm font-semibold text-amber-300">Connection lost</p>
+                <p className="text-[11px] text-amber-400/70">Trying to reconnect...</p>
+              </div>
+            </div>
+            <Loader2 className="w-4 h-4 text-amber-400 animate-spin" />
+          </div>
+        </div>
+      )}
+
+      {/* Whiteboard Loading Overlay */}
+      {isWhiteboardLoading && activeTab === 'whiteboard' && (
+        <div className="absolute inset-0 z-[60] bg-[#070a14]/90 flex flex-col items-center justify-center animate-fadeIn">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-xl shadow-indigo-500/30 mb-4">
+            <PenTool className="w-6 h-6 text-white" />
+          </div>
+          <div className="flex items-center gap-2.5">
+            <Loader2 className="w-4 h-4 text-indigo-400 animate-spin" />
+            <span className="text-sm font-medium text-slate-300">Loading whiteboard...</span>
+          </div>
+        </div>
+      )}
 
       {/* Mobile Top Header */}
       {isMobile && (
@@ -408,7 +501,7 @@ const Room = () => {
                     <span className="text-white font-semibold text-sm truncate">{user?.username}</span>
                     <span className="text-[9px] font-bold text-indigo-300 bg-indigo-500/15 px-1.5 py-0.5 rounded-md uppercase tracking-wider">You</span>
                   </div>
-                  <span className="text-[11px] text-slate-500">Editing code</span>
+                  <span className="text-[11px] text-slate-500">Editing now</span>
                 </div>
               </li>
               
@@ -427,8 +520,11 @@ const Room = () => {
                       <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-400 rounded-full border-[3px] border-[#0d1117] shadow-[0_0_6px_rgba(52,211,153,0.5)] animate-pulse"></span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <span className="text-slate-300 font-medium text-sm group-hover:text-white transition-colors truncate block">{u.username}</span>
-                      <span className="text-[11px] text-slate-600">Active now</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-300 font-medium text-sm group-hover:text-white transition-colors truncate block">{u.username}</span>
+                        {u.isEditing && <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse shrink-0"></span>}
+                      </div>
+                      <span className="text-[11px] text-slate-600">{u.isEditing ? 'Editing code' : 'Active now'}</span>
                     </div>
                   </li>
                 );
@@ -515,6 +611,29 @@ const Room = () => {
               >
                 <PenTool className="w-3.5 h-3.5 mr-1.5" /> Board
               </button>
+            </div>
+
+            {/* Layout Presets */}
+            <div className="flex bg-white/[0.04] rounded-xl p-0.5 border border-white/[0.05] gap-0.5" title="Layout presets">
+              {[
+                { id: 'coding', icon: Code, label: 'Coding Mode' },
+                { id: 'discussion', icon: MessageSquare, label: 'Discussion Mode' },
+                { id: 'whiteboard', icon: PenTool, label: 'Whiteboard Mode' },
+                { id: 'focus', icon: Maximize2, label: 'Focus Mode' },
+              ].map(({ id, icon: Icon, label }) => (
+                <button
+                  key={id}
+                  onClick={() => applyPreset(id)}
+                  title={label}
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-300 ${
+                    activePreset === id
+                      ? 'bg-indigo-500/20 text-indigo-300 shadow-[0_0_8px_rgba(99,102,241,0.2)]'
+                      : 'text-slate-500 hover:text-slate-300 hover:bg-white/[0.04]'
+                  } ${presetAnimating === id ? 'scale-110' : ''}`}
+                >
+                  <Icon className="w-4 h-4" />
+                </button>
+              ))}
             </div>
 
             {/* Right: Actions */}

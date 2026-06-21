@@ -469,169 +469,171 @@ const Room = () => {
         >
           
           {/* Top Action Bar */}
-          <div className="min-h-[56px] shrink-0 glass-panel rounded-t-[2rem] border-b-0 border-white/10 flex items-center justify-between px-5 py-2 z-20 relative overflow-x-hidden flex-wrap gap-1">
+          <div className="min-h-[52px] shrink-0 glass-panel rounded-t-[2rem] border-b-0 border-white/10 flex items-center justify-between px-3 md:px-5 py-1.5 z-20 relative overflow-x-hidden flex-wrap gap-1.5">
             <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent"></div>
-            <div className="flex p-0.5 rounded-[1.25rem] bg-gradient-to-b from-slate-700/60 via-slate-600/30 to-slate-700/60 border border-white/[0.06] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+
+            {/* Left: Tab switcher */}
+            <div className="flex bg-white/[0.06] rounded-xl p-0.5 border border-white/[0.06]">
               <button
-                className={`px-4 py-2 rounded-xl flex items-center text-sm font-bold transition-all duration-300 relative overflow-hidden ${
-                  activeTab === 'editor' 
-                    ? 'bg-gradient-to-b from-slate-600 via-slate-400 to-slate-600 text-white shadow-[0_0_15px_rgba(99,102,241,0.5),inset_0_1px_0_rgba(255,255,255,0.25)] border border-white/20' 
-                    : 'text-slate-400 hover:text-white bg-gradient-to-b from-transparent via-transparent to-transparent hover:from-slate-600/40 hover:via-slate-500/20 hover:to-slate-600/40'
+                className={`px-3 md:px-4 py-1.5 rounded-[10px] flex items-center text-xs md:text-sm font-medium transition-all duration-200 ${
+                  activeTab === 'editor'
+                    ? 'bg-[#1e293b] text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white'
                 }`}
                 onClick={() => setActiveTab('editor')}
               >
-                {activeTab === 'editor' && <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/20 via-indigo-400/10 to-indigo-500/20 pointer-events-none"></div>}
-                <Code className="w-4 h-4 mr-1.5" /> Code
+                <Code className="w-3.5 h-3.5 mr-1.5" /> Code
               </button>
               <button
-                className={`px-4 py-2 rounded-xl flex items-center text-sm font-bold transition-all duration-300 relative overflow-hidden ${
-                  activeTab === 'whiteboard' 
-                    ? 'bg-gradient-to-b from-slate-600 via-slate-400 to-slate-600 text-white shadow-[0_0_15px_rgba(99,102,241,0.5),inset_0_1px_0_rgba(255,255,255,0.25)] border border-white/20' 
-                    : 'text-slate-400 hover:text-white bg-gradient-to-b from-transparent via-transparent to-transparent hover:from-slate-600/40 hover:via-slate-500/20 hover:to-slate-600/40'
+                className={`px-3 md:px-4 py-1.5 rounded-[10px] flex items-center text-xs md:text-sm font-medium transition-all duration-200 ${
+                  activeTab === 'whiteboard'
+                    ? 'bg-[#1e293b] text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white'
                 }`}
                 onClick={() => setActiveTab('whiteboard')}
               >
-                {activeTab === 'whiteboard' && <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/20 via-indigo-400/10 to-indigo-500/20 pointer-events-none"></div>}
-                <PenTool className="w-4 h-4 mr-1.5" /> Board
+                <PenTool className="w-3.5 h-3.5 mr-1.5" /> Board
               </button>
             </div>
-            
-            <div className="flex items-center gap-1.5 md:gap-2 flex-wrap">
-              
-              {activeTab === 'editor' && (
-                <div className="flex items-center p-0.5 rounded-xl bg-gradient-to-b from-slate-700/50 via-slate-600/20 to-slate-700/50 border border-white/[0.04]">
-                  {activePresenter === user.username ? (
-                    <button
-                      onClick={() => {
-                        socket.emit('stop-presenting', { roomId });
-                        setActivePresenter(null);
-                      }}
-                      className="px-2 md:px-3 py-1.5 md:py-2 rounded-xl flex items-center text-[10px] md:text-xs font-bold transition-all bg-gradient-to-b from-red-500/30 via-red-400/20 to-red-500/30 text-red-300 border border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.3),inset_0_1px_0_rgba(255,255,255,0.1)] animate-pulse"
-                    >
-                      <MonitorStop className="w-3 h-3 md:w-4 md:h-4 mr-1" /> Stop
-                    </button>
-                  ) : !activePresenter ? (
-                    <button
-                      onClick={() => {
-                        socket.emit('start-presenting', { roomId, username: user.username });
-                        setActivePresenter(user.username);
-                      }}
-                      className="px-2 md:px-3 py-1.5 md:py-2 rounded-xl flex items-center text-[10px] md:text-xs font-bold transition-all bg-gradient-to-b from-slate-600/50 via-slate-500/30 to-slate-600/50 text-slate-300 hover:text-white border border-white/10 hover:border-indigo-500/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] hover:shadow-[0_0_15px_rgba(99,102,241,0.2),inset_0_1px_0_rgba(255,255,255,0.1)]"
-                    >
-                      <MonitorPlay className="w-3 h-3 md:w-4 md:h-4 mr-1" /> Present
-                    </button>
-                  ) : (
-                    <div className="flex items-center px-2 md:px-3 py-1.5 bg-gradient-to-b from-emerald-500/20 via-emerald-400/10 to-emerald-500/20 border border-emerald-500/30 text-emerald-300 rounded-xl text-[10px] md:text-xs font-bold animate-pulse shadow-[0_0_15px_rgba(16,185,129,0.2),inset_0_1px_0_rgba(255,255,255,0.1)]">
-                      <MonitorPlay className="w-3 h-3 md:w-3.5 md:h-3.5 mr-1" /> Following
-                    </div>
-                  )}
-                </div>
-              )}
 
-              <div className="flex items-center p-0.5 rounded-xl bg-gradient-to-b from-slate-700/50 via-slate-600/20 to-slate-700/50 border border-white/[0.04]">
-                {!isMobile && (
-                  <>
-                    <button
-                      onClick={() => setShowLeftPanel(prev => !prev)}
-                      title={showLeftPanel ? 'Hide Team Panel' : 'Show Team Panel'}
-                      className={`px-2 md:px-2.5 py-1.5 md:py-2 rounded-xl transition-all cursor-pointer flex items-center justify-center border ${
-                        !showLeftPanel 
-                          ? 'bg-gradient-to-b from-indigo-500/30 via-indigo-400/20 to-indigo-500/30 text-indigo-300 border-indigo-500/40 shadow-[0_0_12px_rgba(99,102,241,0.3),inset_0_1px_0_rgba(255,255,255,0.15)]' 
-                          : 'bg-gradient-to-b from-slate-600/40 via-slate-500/20 to-slate-600/40 text-slate-400 hover:text-white border-white/[0.06] hover:border-white/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]'
-                      }`}
-                    >
-                      <Users className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                    </button>
-                    <button
-                      onClick={() => setShowBottomPanel(prev => !prev)}
-                      title={showBottomPanel ? 'Hide Terminal Panel' : 'Show Terminal Panel'}
-                      className={`px-2 md:px-2.5 py-1.5 md:py-2 rounded-xl transition-all cursor-pointer flex items-center justify-center border ${
-                        !showBottomPanel 
-                          ? 'bg-gradient-to-b from-indigo-500/30 via-indigo-400/20 to-indigo-500/30 text-indigo-300 border-indigo-500/40 shadow-[0_0_12px_rgba(99,102,241,0.3),inset_0_1px_0_rgba(255,255,255,0.15)]' 
-                          : 'bg-gradient-to-b from-slate-600/40 via-slate-500/20 to-slate-600/40 text-slate-400 hover:text-white border-white/[0.06] hover:border-white/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]'
-                      }`}
-                    >
-                      <Terminal className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                    </button>
-                    <button
-                      onClick={() => setShowRightPanel(prev => !prev)}
-                      title={showRightPanel ? 'Hide Chat Panel' : 'Show Chat Panel'}
-                      className={`px-2 md:px-2.5 py-1.5 md:py-2 rounded-xl transition-all cursor-pointer flex items-center justify-center border ${
-                        !showRightPanel 
-                          ? 'bg-gradient-to-b from-indigo-500/30 via-indigo-400/20 to-indigo-500/30 text-indigo-300 border-indigo-500/40 shadow-[0_0_12px_rgba(99,102,241,0.3),inset_0_1px_0_rgba(255,255,255,0.15)]' 
-                          : 'bg-gradient-to-b from-slate-600/40 via-slate-500/20 to-slate-600/40 text-slate-400 hover:text-white border-white/[0.06] hover:border-white/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]'
-                      }`}
-                    >
-                      <MessageSquare className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                    </button>
-                  </>
-                )}
-                <button
-                  onClick={() => {
-                    if (!document.fullscreenElement) {
-                      document.documentElement.requestFullscreen().catch(err => console.log(err));
-                    } else {
-                      document.exitFullscreen();
-                    }
-                  }}
-                  title="Toggle Fullscreen"
-                  className="px-2 md:px-2.5 py-1.5 md:py-2 rounded-xl transition-all cursor-pointer flex items-center justify-center border bg-gradient-to-b from-slate-600/40 via-slate-500/20 to-slate-600/40 text-slate-400 hover:text-white border-white/[0.06] hover:border-white/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]"
-                >
-                  <Maximize2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                </button>
-              </div>
+            {/* Right: Actions */}
+            <div className="flex items-center gap-1 md:gap-1.5 flex-wrap">
 
               {activeTab === 'editor' && (
                 <>
-                  <div className="hidden xl:flex items-center gap-3 px-2 md:px-3 py-1.5 md:py-2 rounded-xl bg-gradient-to-b from-slate-700/40 via-slate-600/20 to-slate-700/40 border border-white/[0.05] text-[10px] md:text-[11px] text-slate-400 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
-                    <span className="flex items-center gap-1.5">
-                      <Code className="w-3 h-3 md:w-3.5 md:h-3.5 text-indigo-300" />
+                  {activePresenter === user.username ? (
+                    <button
+                      onClick={() => { socket.emit('stop-presenting', { roomId }); setActivePresenter(null); }}
+                      className="h-8 px-2.5 rounded-lg flex items-center text-[11px] font-semibold bg-red-500/15 text-red-400 border border-red-500/25 hover:bg-red-500/25 transition-colors"
+                    >
+                      <MonitorStop className="w-3.5 h-3.5 mr-1" /> Stop
+                    </button>
+                  ) : !activePresenter ? (
+                    <button
+                      onClick={() => { socket.emit('start-presenting', { roomId, username: user.username }); setActivePresenter(user.username); }}
+                      className="h-8 px-2.5 rounded-lg flex items-center text-[11px] font-semibold text-slate-400 hover:text-white border border-white/[0.08] hover:border-white/20 bg-white/[0.04] hover:bg-white/[0.08] transition-colors"
+                    >
+                      <MonitorPlay className="w-3.5 h-3.5 mr-1" /> Present
+                    </button>
+                  ) : (
+                    <div className="h-8 px-2.5 rounded-lg flex items-center text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 animate-pulse">
+                      <MonitorPlay className="w-3.5 h-3.5 mr-1" /> Following
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Panel & fullscreen toggles */}
+              {!isMobile && (
+                <>
+                  <div className="w-px h-5 bg-white/[0.06] mx-0.5" />
+                  <button
+                    onClick={() => setShowLeftPanel(prev => !prev)}
+                    title={showLeftPanel ? 'Hide Team Panel' : 'Show Team Panel'}
+                    className={`h-8 w-8 rounded-lg flex items-center justify-center transition-all ${
+                      !showLeftPanel
+                        ? 'bg-indigo-500/15 text-indigo-400 border border-indigo-500/25'
+                        : 'text-slate-400 hover:text-white border border-transparent hover:bg-white/[0.06]'
+                    }`}
+                  >
+                    <Users className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setShowBottomPanel(prev => !prev)}
+                    title={showBottomPanel ? 'Hide Terminal Panel' : 'Show Terminal Panel'}
+                    className={`h-8 w-8 rounded-lg flex items-center justify-center transition-all ${
+                      !showBottomPanel
+                        ? 'bg-indigo-500/15 text-indigo-400 border border-indigo-500/25'
+                        : 'text-slate-400 hover:text-white border border-transparent hover:bg-white/[0.06]'
+                    }`}
+                  >
+                    <Terminal className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setShowRightPanel(prev => !prev)}
+                    title={showRightPanel ? 'Hide Chat Panel' : 'Show Chat Panel'}
+                    className={`h-8 w-8 rounded-lg flex items-center justify-center transition-all ${
+                      !showRightPanel
+                        ? 'bg-indigo-500/15 text-indigo-400 border border-indigo-500/25'
+                        : 'text-slate-400 hover:text-white border border-transparent hover:bg-white/[0.06]'
+                    }`}
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" />
+                  </button>
+                  <div className="w-px h-5 bg-white/[0.06] mx-0.5" />
+                </>
+              )}
+              <button
+                onClick={() => {
+                  if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch(() => {});
+                  } else {
+                    document.exitFullscreen();
+                  }
+                }}
+                title="Toggle Fullscreen"
+                className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-white border border-transparent hover:bg-white/[0.06] transition-all"
+              >
+                <Maximize2 className="w-3.5 h-3.5" />
+              </button>
+
+              {activeTab === 'editor' && (
+                <>
+                  {/* Language & line info */}
+                  <div className="hidden xl:flex items-center gap-2 h-7 px-2.5 rounded-lg bg-white/[0.04] border border-white/[0.06] text-[11px] text-slate-400">
+                    <span className="flex items-center gap-1">
+                      <Code className="w-3 h-3 text-indigo-400" />
                       {language.toUpperCase()}
                     </span>
-                    <span className="w-px h-3 md:h-4 bg-white/[0.06]" />
+                    <span className="w-px h-3 bg-white/[0.06]" />
                     <span className="whitespace-nowrap">{code.split('\n').length} lines</span>
                   </div>
-                  <div className="hidden lg:flex items-center gap-1 px-1.5 py-1 rounded-xl bg-gradient-to-b from-slate-700/40 via-slate-600/20 to-slate-700/40 border border-white/[0.05] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
-                    <Settings2 className="w-3 h-3 md:w-3.5 md:h-3.5 text-slate-500" />
+
+                  {/* Font size controls */}
+                  <div className="hidden lg:flex items-center gap-0.5 h-7 px-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06]">
+                    <Settings2 className="w-3 h-3 text-slate-500 mr-0.5" />
                     <button
-                      onClick={() => setEditorFontSize(size => Math.max(11, size - 1))}
-                      className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                      onClick={() => setEditorFontSize(s => Math.max(11, s - 1))}
+                      className="w-6 h-6 rounded flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
                       title="Decrease editor font size"
                     >
-                      <Minus className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                      <Minus className="w-3 h-3" />
                     </button>
-                    <span className="w-5 md:w-7 text-center text-[10px] md:text-[11px] font-bold text-slate-300">{editorFontSize}</span>
+                    <span className="w-5 text-center text-[11px] font-semibold text-slate-300">{editorFontSize}</span>
                     <button
-                      onClick={() => setEditorFontSize(size => Math.min(22, size + 1))}
-                      className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                      onClick={() => setEditorFontSize(s => Math.min(22, s + 1))}
+                      className="w-6 h-6 rounded flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
                       title="Increase editor font size"
                     >
-                      <Plus className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                      <Plus className="w-3 h-3" />
                     </button>
                   </div>
+
+                  {/* Download */}
                   <button
                     onClick={handleDownloadCode}
                     title="Download Code"
-                    className="px-2 md:px-2.5 py-1.5 md:py-2 rounded-xl transition-all cursor-pointer flex items-center justify-center border bg-gradient-to-b from-slate-600/40 via-slate-500/20 to-slate-600/40 text-slate-400 hover:text-white border-white/[0.06] hover:border-white/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]"
+                    className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-white border border-transparent hover:bg-white/[0.06] transition-all"
                   >
-                    <Download className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                    <Download className="w-3.5 h-3.5" />
                   </button>
+
+                  {/* Theme select */}
                   <select
-                    className="bg-gradient-to-b from-slate-700/50 via-slate-600/20 to-slate-700/50 border border-white/[0.08] text-white text-[10px] md:text-xs rounded-xl block px-1.5 md:px-3 py-1.5 md:py-2 outline-none transition-all cursor-pointer hover:border-white/20 hover:from-slate-600/50 hover:via-slate-500/20 hover:to-slate-600/50 min-w-0 max-w-[80px] md:max-w-none shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+                    className="h-8 bg-white/[0.06] border border-white/[0.08] text-white text-[11px] rounded-lg px-2 outline-none cursor-pointer hover:border-white/20 transition-colors appearance-none"
                     value={editorTheme}
                     onChange={(e) => setEditorTheme(e.target.value)}
                   >
                     <option value="vs-dark">Dark</option>
                     <option value="light">Light</option>
-                    <option value="hc-black">High Contrast</option>
+                    <option value="hc-black">H. Contrast</option>
                   </select>
+
+                  {/* Language select */}
                   <select
-                    className="bg-gradient-to-b from-slate-700/50 via-slate-600/20 to-slate-700/50 border border-white/[0.08] text-white text-[10px] md:text-xs rounded-xl block px-1.5 md:px-3 py-1.5 md:py-2 outline-none transition-all cursor-pointer hover:border-white/20 hover:from-slate-600/50 hover:via-slate-500/20 hover:to-slate-600/50 min-w-0 max-w-[65px] md:max-w-none shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+                    className="h-8 bg-white/[0.06] border border-white/[0.08] text-white text-[11px] rounded-lg px-2 outline-none cursor-pointer hover:border-white/20 transition-colors appearance-none"
                     value={language}
-                    onChange={(e) => {
-                      setLanguage(e.target.value);
-                      socket.emit('language-change', { roomId, language: e.target.value });
-                    }}
+                    onChange={(e) => { setLanguage(e.target.value); socket.emit('language-change', { roomId, language: e.target.value }); }}
                   >
                     <option value="javascript">JS</option>
                     <option value="python">Py</option>
@@ -639,13 +641,14 @@ const Room = () => {
                     <option value="cpp">C++</option>
                     <option value="c">C</option>
                   </select>
+
+                  {/* Run button */}
                   <button
                     onClick={handleRunCode}
                     disabled={isExecuting}
-                    className="px-3 md:px-5 py-1.5 md:py-2 rounded-xl flex items-center text-xs md:text-sm font-semibold transition-all duration-300 bg-gradient-to-b from-emerald-500 via-emerald-400 to-emerald-500 text-white border border-emerald-300/30 shadow-[0_0_20px_rgba(16,185,129,0.4),inset_0_1px_0_rgba(255,255,255,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.6),inset_0_1px_0_rgba(255,255,255,0.4)] hover:scale-105 disabled:opacity-40 disabled:transform-none disabled:shadow-none relative overflow-hidden"
+                    className="h-8 px-4 rounded-lg flex items-center text-xs font-semibold transition-all bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400/30 shadow-sm hover:shadow-[0_0_12px_rgba(16,185,129,0.3)] active:scale-[0.97] disabled:opacity-40 disabled:pointer-events-none"
                   >
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent pointer-events-none"></div>
-                    <Play className={`w-3 h-3 md:w-3.5 md:h-3.5 ${isExecuting ? 'animate-pulse' : ''} md:mr-1.5`} /> 
+                    <Play className={`w-3.5 h-3.5 ${isExecuting ? 'animate-pulse' : ''} mr-1`} />
                     <span className="hidden md:inline">{isExecuting ? 'Running...' : 'Run'}</span>
                   </button>
                 </>

@@ -396,105 +396,110 @@ const Room = () => {
               </button>
             </div>
             
-            {activeTab === 'editor' && (
-              <div className="flex items-center space-x-2 md:space-x-3">
-                <div className="hidden xl:flex items-center gap-3 mr-1 px-3 py-2 rounded-xl bg-slate-900/60 border border-white/5 text-[11px] text-slate-400">
-                  <span className="flex items-center gap-1.5">
-                    <Code className="w-3.5 h-3.5 text-indigo-300" />
-                    {language.toUpperCase()}
-                  </span>
-                  <span className="w-px h-4 bg-white/10" />
-                  <span>{code.split('\n').length} lines</span>
-                </div>
-                <div className="hidden lg:flex items-center gap-1 px-1.5 py-1.5 rounded-xl bg-slate-900/60 border border-white/5">
-                  <Settings2 className="w-3.5 h-3.5 text-slate-500 mx-1" />
+            <div className="flex items-center space-x-2 md:space-x-3">
+              {/* Global Actions (Visible in Editor and Whiteboard) */}
+              {!isMobile && (
+                <div className="flex items-center gap-1">
                   <button
-                    onClick={() => setEditorFontSize(size => Math.max(11, size - 1))}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
-                    title="Decrease editor font size"
+                    onClick={() => setShowLeftPanel(prev => !prev)}
+                    title={showLeftPanel ? 'Hide Team Panel' : 'Show Team Panel'}
+                    className={`px-3 py-1.5 md:py-2 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all cursor-pointer flex items-center justify-center shadow-inner border ${!showLeftPanel ? 'bg-indigo-500/10 border-indigo-500/40 text-indigo-300' : 'bg-slate-900/80 hover:bg-slate-800 border-white/10 text-slate-300 hover:text-white'}`}
                   >
-                    <Minus className="w-3.5 h-3.5" />
+                    <Users className="w-4 h-4" />
                   </button>
-                  <span className="w-7 text-center text-[11px] font-bold text-slate-300">{editorFontSize}</span>
                   <button
-                    onClick={() => setEditorFontSize(size => Math.min(22, size + 1))}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
-                    title="Increase editor font size"
+                    onClick={() => setShowRightPanel(prev => !prev)}
+                    title={showRightPanel ? 'Hide Chat Panel' : 'Show Chat Panel'}
+                    className={`px-3 py-1.5 md:py-2 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all cursor-pointer flex items-center justify-center shadow-inner border ${!showRightPanel ? 'bg-indigo-500/10 border-indigo-500/40 text-indigo-300' : 'bg-slate-900/80 hover:bg-slate-800 border-white/10 text-slate-300 hover:text-white'}`}
                   >
-                    <Plus className="w-3.5 h-3.5" />
+                    <MessageSquare className="w-4 h-4" />
                   </button>
                 </div>
-                {!isMobile && (
-                  <div className="flex items-center gap-1">
+              )}
+              <button
+                onClick={() => {
+                  if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch(err => console.log(err));
+                  } else {
+                    document.exitFullscreen();
+                  }
+                }}
+                title="Toggle Fullscreen"
+                className="bg-slate-900/80 border border-white/10 text-slate-300 hover:text-white px-3 py-1.5 md:py-2 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all cursor-pointer hover:bg-slate-800 flex items-center justify-center shadow-inner"
+              >
+                <Maximize2 className="w-4 h-4" />
+              </button>
+
+              {/* Editor-Specific Actions */}
+              {activeTab === 'editor' && (
+                <>
+                  <div className="hidden xl:flex items-center gap-3 mr-1 px-3 py-2 rounded-xl bg-slate-900/60 border border-white/5 text-[11px] text-slate-400">
+                    <span className="flex items-center gap-1.5">
+                      <Code className="w-3.5 h-3.5 text-indigo-300" />
+                      {language.toUpperCase()}
+                    </span>
+                    <span className="w-px h-4 bg-white/10" />
+                    <span>{code.split('\n').length} lines</span>
+                  </div>
+                  <div className="hidden lg:flex items-center gap-1 px-1.5 py-1.5 rounded-xl bg-slate-900/60 border border-white/5">
+                    <Settings2 className="w-3.5 h-3.5 text-slate-500 mx-1" />
                     <button
-                      onClick={() => setShowLeftPanel(prev => !prev)}
-                      title={showLeftPanel ? 'Hide Team Panel' : 'Show Team Panel'}
-                      className={`px-3 py-1.5 md:py-2 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all cursor-pointer flex items-center justify-center shadow-inner border ${!showLeftPanel ? 'bg-indigo-500/10 border-indigo-500/40 text-indigo-300' : 'bg-slate-900/80 hover:bg-slate-800 border-white/10 text-slate-300 hover:text-white'}`}
+                      onClick={() => setEditorFontSize(size => Math.max(11, size - 1))}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                      title="Decrease editor font size"
                     >
-                      <Users className="w-4 h-4" />
+                      <Minus className="w-3.5 h-3.5" />
                     </button>
+                    <span className="w-7 text-center text-[11px] font-bold text-slate-300">{editorFontSize}</span>
                     <button
-                      onClick={() => setShowRightPanel(prev => !prev)}
-                      title={showRightPanel ? 'Hide Chat Panel' : 'Show Chat Panel'}
-                      className={`px-3 py-1.5 md:py-2 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all cursor-pointer flex items-center justify-center shadow-inner border ${!showRightPanel ? 'bg-indigo-500/10 border-indigo-500/40 text-indigo-300' : 'bg-slate-900/80 hover:bg-slate-800 border-white/10 text-slate-300 hover:text-white'}`}
+                      onClick={() => setEditorFontSize(size => Math.min(22, size + 1))}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                      title="Increase editor font size"
                     >
-                      <MessageSquare className="w-4 h-4" />
+                      <Plus className="w-3.5 h-3.5" />
                     </button>
                   </div>
-                )}
-                <button
-                  onClick={() => {
-                    if (!document.fullscreenElement) {
-                      document.documentElement.requestFullscreen().catch(err => console.log(err));
-                    } else {
-                      document.exitFullscreen();
-                    }
-                  }}
-                  title="Toggle Fullscreen"
-                  className="bg-slate-900/80 border border-white/10 text-slate-300 hover:text-white px-3 py-1.5 md:py-2 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all cursor-pointer hover:bg-slate-800 flex items-center justify-center shadow-inner"
-                >
-                  <Maximize2 className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={handleDownloadCode}
-                  title="Download Code"
-                  className="bg-slate-900/80 border border-white/10 text-slate-300 hover:text-white px-3 py-1.5 md:py-2 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all cursor-pointer hover:bg-slate-800 flex items-center justify-center shadow-inner"
-                >
-                  <Download className="w-4 h-4" />
-                </button>
-                <select
-                  className="bg-slate-900/80 border border-white/10 text-white text-xs md:text-sm rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent block px-2 md:px-3 py-1.5 md:py-2 outline-none transition-all cursor-pointer hover:bg-slate-800"
-                  value={editorTheme}
-                  onChange={(e) => setEditorTheme(e.target.value)}
-                >
-                  <option value="vs-dark">Dark Theme</option>
-                  <option value="light">Light Theme</option>
-                  <option value="hc-black">High Contrast</option>
-                </select>
-                <select
-                  className="bg-slate-900/80 border border-white/10 text-white text-xs md:text-sm rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent block px-2 md:px-3 py-1.5 md:py-2 outline-none transition-all cursor-pointer hover:bg-slate-800"
-                  value={language}
-                  onChange={(e) => {
-                    setLanguage(e.target.value);
-                    socket.emit('language-change', { roomId, language: e.target.value });
-                  }}
-                >
-                  <option value="javascript">JavaScript</option>
-                  <option value="python">Python</option>
-                  <option value="java">Java</option>
-                  <option value="cpp">C++</option>
-                  <option value="c">C</option>
-                </select>
-                <button
-                  onClick={handleRunCode}
-                  disabled={isExecuting}
-                  className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 border border-emerald-400/20 shadow-[0_4px_15px_rgba(16,185,129,0.2)] hover:shadow-[0_4px_25px_rgba(16,185,129,0.4)] text-white px-3 md:px-5 py-1.5 md:py-2 rounded-xl flex items-center text-xs md:text-sm font-semibold transition-all hover:scale-105 disabled:opacity-50 disabled:transform-none"
-                >
-                  <Play className={`w-3.5 h-3.5 mr-1.5 ${isExecuting ? 'animate-pulse' : ''}`} /> 
-                  {isExecuting ? 'Running...' : 'Run'}
-                </button>
-              </div>
-            )}
+                  <button
+                    onClick={handleDownloadCode}
+                    title="Download Code"
+                    className="bg-slate-900/80 border border-white/10 text-slate-300 hover:text-white px-3 py-1.5 md:py-2 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all cursor-pointer hover:bg-slate-800 flex items-center justify-center shadow-inner"
+                  >
+                    <Download className="w-4 h-4" />
+                  </button>
+                  <select
+                    className="bg-slate-900/80 border border-white/10 text-white text-xs md:text-sm rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent block px-2 md:px-3 py-1.5 md:py-2 outline-none transition-all cursor-pointer hover:bg-slate-800"
+                    value={editorTheme}
+                    onChange={(e) => setEditorTheme(e.target.value)}
+                  >
+                    <option value="vs-dark">Dark Theme</option>
+                    <option value="light">Light Theme</option>
+                    <option value="hc-black">High Contrast</option>
+                  </select>
+                  <select
+                    className="bg-slate-900/80 border border-white/10 text-white text-xs md:text-sm rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent block px-2 md:px-3 py-1.5 md:py-2 outline-none transition-all cursor-pointer hover:bg-slate-800"
+                    value={language}
+                    onChange={(e) => {
+                      setLanguage(e.target.value);
+                      socket.emit('language-change', { roomId, language: e.target.value });
+                    }}
+                  >
+                    <option value="javascript">JavaScript</option>
+                    <option value="python">Python</option>
+                    <option value="java">Java</option>
+                    <option value="cpp">C++</option>
+                    <option value="c">C</option>
+                  </select>
+                  <button
+                    onClick={handleRunCode}
+                    disabled={isExecuting}
+                    className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 border border-emerald-400/20 shadow-[0_4px_15px_rgba(16,185,129,0.2)] hover:shadow-[0_4px_25px_rgba(16,185,129,0.4)] text-white px-3 md:px-5 py-1.5 md:py-2 rounded-xl flex items-center text-xs md:text-sm font-semibold transition-all hover:scale-105 disabled:opacity-50 disabled:transform-none"
+                  >
+                    <Play className={`w-3.5 h-3.5 mr-1.5 ${isExecuting ? 'animate-pulse' : ''}`} /> 
+                    {isExecuting ? 'Running...' : 'Run'}
+                  </button>
+                </>
+              )}
+            </div>
           </div>
 
           {/* Main Workspace */}

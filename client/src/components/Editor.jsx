@@ -12,6 +12,19 @@ const EditorComponent = ({ roomId, code, setCode, language, setLanguage, theme, 
   const [wordWrap, setWordWrap] = useState('on');
   const typingTimerRef = useRef(null);
   
+  // Clean up typing timer on unmount
+  useEffect(() => {
+    return () => {
+      if (typingTimerRef.current) {
+        clearTimeout(typingTimerRef.current);
+        typingTimerRef.current = null;
+        if (socket) {
+          socket.emit('user-idle', { roomId });
+        }
+      }
+    };
+  }, [socket, roomId]);
+
   // Phase 3: Line Comments
   const [activeCommentLine, setActiveCommentLine] = useState(null);
   const [commentPanelPos, setCommentPanelPos] = useState({ top: 0, left: 0 });

@@ -383,7 +383,7 @@ const Dashboard = () => {
               {filteredRooms.map((room, idx) => (
                 <div
                   key={room._id}
-                  className="glass-panel-light p-5 rounded-2xl flex justify-between items-center hover:bg-slate-700/30 transition-all duration-300 border-white/5 hover:border-indigo-500/30 hover:shadow-[0_0_25px_rgba(99,102,241,0.1)] group animate-fadeIn"
+                  className="glass-panel-light p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 hover:bg-slate-700/30 transition-all duration-300 border-white/5 hover:border-indigo-500/30 hover:shadow-[0_0_25px_rgba(99,102,241,0.1)] group animate-fadeIn"
                   style={{ animationDelay: `${idx * 80}ms` }}
                 >
                   <div className="flex items-center gap-3 min-w-0">
@@ -443,8 +443,8 @@ const Dashboard = () => {
       </div>
 
       {toast && (
-        <div className="fixed bottom-10 left-1/2 transform -translate-x-1/2 z-[100] animate-fadeIn">
-          <div className={`flex items-center gap-3 px-5 py-3 rounded-full shadow-2xl backdrop-blur-md border ${toast.type === 'error' ? 'bg-red-500/20 border-red-500/30 text-red-300' : 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300'}`}>
+        <div className="fixed bottom-6 md:bottom-10 left-1/2 transform -translate-x-1/2 z-[100] animate-fadeIn px-4 w-full md:w-auto">
+          <div className={`flex items-center gap-3 px-4 md:px-5 py-2.5 md:py-3 rounded-full shadow-2xl backdrop-blur-md border text-sm ${toast.type === 'error' ? 'bg-red-500/20 border-red-500/30 text-red-300' : 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300'}`}>
             {toast.type === 'error' ? <AlertCircle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
             <span className="font-semibold text-sm tracking-wide">{toast.message}</span>
           </div>

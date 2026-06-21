@@ -339,9 +339,11 @@ const Dashboard = () => {
         {/* ── Main Grid: Left (form) + Right (actions, templates, activity) ── */}
         <div className="grid lg:grid-cols-5 gap-5 animate-fadeIn animate-delay-100">
 
-          {/* ══ LEFT: Create / Join Form ══ */}
-          <div className="lg:col-span-3">
-            <div className="glass-panel p-5 sm:p-6 rounded-2xl relative overflow-hidden h-full">
+          {/* ══ LEFT: Create / Join Form + Recent Workspaces ══ */}
+          <div className="lg:col-span-3 flex flex-col gap-4">
+
+            {/* Create / Join Form */}
+            <div className="glass-panel p-5 sm:p-6 rounded-2xl relative overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/3 via-transparent to-emerald-500/3 pointer-events-none"></div>
 
               {/* Segmented tabs */}
@@ -478,6 +480,193 @@ const Dashboard = () => {
                 </div>
               )}
             </div>
+
+            {/* ══ Recent Workspaces (inside left column) ══ */}
+            <div className="glass-panel p-5 sm:p-6 rounded-2xl relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent pointer-events-none"></div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+                <div className="flex items-center gap-2">
+                  <span className="w-1.5 h-7 bg-gradient-to-b from-indigo-500 to-purple-500 rounded-full shrink-0"></span>
+                  <h2 className="text-base sm:text-lg font-extrabold text-white tracking-tight">Recent Workspaces</h2>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex bg-white/[0.06] rounded-lg p-0.5 border border-white/[0.06]">
+                    {[
+                      { id: 'all', label: 'All' },
+                      { id: 'pinned', label: 'Pinned' },
+                      { id: 'admin', label: 'Admin' },
+                      { id: 'recent', label: 'Recent' },
+                    ].map(({ id, label }) => (
+                      <button
+                        key={id}
+                        onClick={() => setRoomFilterTab(id)}
+                        className={`px-3 py-1.5 rounded-[7px] text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all ${
+                          roomFilterTab === id
+                            ? 'bg-indigo-500/20 text-indigo-200 shadow-sm'
+                            : 'text-slate-500 hover:text-white'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="relative w-44 sm:w-52">
+                    <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500 pointer-events-none" />
+                    <input
+                      type="search"
+                      value={roomSearch}
+                      onChange={(e) => setRoomSearch(e.target.value)}
+                      placeholder="Search..."
+                      className="w-full pl-8 pr-3 py-2 rounded-lg glass-input text-xs placeholder-slate-500"
+                    />
+                    {roomSearch && (
+                      <button
+                        onClick={() => setRoomSearch('')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white p-0.5"
+                      >
+                        <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {isLoadingRooms ? (
+                <div className="grid md:grid-cols-2 gap-3">
+                  {[1, 2, 3, 4].map((n) => (
+                    <div key={n} className="glass-panel-light p-4 rounded-xl border-white/5 animate-pulse">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-lg bg-slate-700/50"></div>
+                          <div className="space-y-1.5">
+                            <div className="w-28 h-3.5 bg-slate-700/50 rounded"></div>
+                            <div className="w-20 h-2.5 bg-slate-700/30 rounded"></div>
+                          </div>
+                        </div>
+                        <div className="flex gap-1">
+                          <div className="w-8 h-8 rounded-lg bg-slate-700/50"></div>
+                          <div className="w-8 h-8 rounded-lg bg-slate-700/50"></div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : loadError ? (
+                <div className="text-center py-12 bg-slate-800/20 rounded-xl border border-dashed border-red-500/20">
+                  <AlertCircle className="w-10 h-10 text-red-400 mx-auto mb-3" />
+                  <p className="text-slate-300 font-medium mb-1">Failed to load workspaces</p>
+                  <p className="text-xs text-slate-500 mb-4">{loadError}</p>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="px-4 py-2 bg-indigo-500/15 text-indigo-300 hover:bg-indigo-500/25 rounded-xl text-xs font-bold border border-indigo-500/20 transition-all"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : recentRooms.length === 0 ? (
+                <div className="text-center py-12 bg-slate-800/20 rounded-xl border border-dashed border-slate-600/30">
+                  <div className="w-12 h-12 rounded-xl bg-slate-700/30 flex items-center justify-center mx-auto mb-3">
+                    <FolderOpen className="w-6 h-6 text-slate-500" />
+                  </div>
+                  <p className="text-slate-300 font-semibold mb-0.5">No workspaces yet</p>
+                  <p className="text-xs text-slate-500">Create a new workspace or join one to get started!</p>
+                </div>
+              ) : filteredRooms.length === 0 ? (
+                <div className="text-center py-12 bg-slate-800/20 rounded-xl border border-dashed border-slate-600/30">
+                  <Search className="w-10 h-10 text-slate-500 mx-auto mb-3" />
+                  <p className="text-slate-300 font-medium text-sm">
+                    {roomFilterTab !== 'all'
+                      ? `No rooms match the "${roomFilterTab}" filter.`
+                      : `No rooms match "${roomSearch}".`}
+                  </p>
+                </div>
+              ) : (
+                <div className="grid md:grid-cols-2 gap-3">
+                  {filteredRooms.map((room, idx) => {
+                    const isPinned = favoriteRooms.includes(room.roomId);
+                    const isAdmin = room.admin === user?.id;
+                    const memberCount = room.members?.length || 1;
+                    const langMap = { javascript: 'JS', python: 'Py', java: 'Java', cpp: 'C++', c: 'C' };
+                    const langLabel = langMap[room.language] || room.language?.toUpperCase() || 'JS';
+                    const daysSince = Math.floor((Date.now() - new Date(room.updatedAt).getTime()) / (1000 * 60 * 60 * 24));
+                    const timeLabel = daysSince === 0 ? 'Today' : daysSince === 1 ? 'Yesterday' : `${daysSince}d ago`;
+                    const isRecent = daysSince < 7;
+                    return (
+                    <div
+                      key={room._id}
+                      onClick={() => { logActivity('opened', room.roomId); navigate(`/room/${room.roomId}`); }}
+                      className="glass-panel-light p-4 rounded-xl flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2.5 hover:bg-slate-700/30 transition-all duration-300 border-white/5 hover:border-indigo-500/30 hover:shadow-[0_0_25px_rgba(99,102,241,0.15)] group animate-fadeIn cursor-pointer relative overflow-hidden"
+                      style={{ animationDelay: `${idx * 60}ms` }}
+                    >
+                      <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b from-indigo-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+
+                      <div className="flex items-center gap-3 min-w-0 relative z-10">
+                        <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center border border-indigo-500/20 shrink-0 group-hover:scale-110 transition-transform duration-300">
+                          <Hash className="w-4 h-4 text-indigo-300" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-mono text-indigo-300 font-bold text-sm tracking-wide truncate">{room.roomId}</span>
+                            <div className="flex items-center gap-1">
+                              {isPinned && (
+                                <span className="text-[9px] font-bold uppercase tracking-wider text-amber-300 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/15">Pinned</span>
+                              )}
+                              {isAdmin && (
+                                <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-300 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/15">Admin</span>
+                              )}
+                              {isRecent && !isPinned && (
+                                <span className="text-[9px] font-bold uppercase tracking-wider text-cyan-300 bg-cyan-500/10 px-1.5 py-0.5 rounded border border-cyan-500/15">Recent</span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 mt-0.5 text-[10px] text-slate-500 font-medium">
+                            <span>{timeLabel}</span>
+                            <span className="w-px h-2.5 bg-white/10"></span>
+                            <span className="px-1.5 py-0.5 rounded bg-white/5 text-slate-400 font-mono text-[9px]">{langLabel}</span>
+                            <span className="w-px h-2.5 bg-white/10"></span>
+                            <span>{memberCount} member{memberCount !== 1 ? 's' : ''}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-0.5 shrink-0 relative z-10" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={() => toggleFavoriteRoom(room.roomId)}
+                          className={`p-2 rounded-lg transition-all border border-transparent ${isPinned ? 'text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/20' : 'text-slate-500 hover:text-amber-300 hover:bg-amber-500/10 hover:border-amber-500/20'}`}
+                          title={isPinned ? 'Unpin workspace' : 'Pin workspace'}
+                        >
+                          <Star className={`w-4 h-4 ${isPinned ? 'fill-current' : ''}`} />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); copyText(room.roomId, 'Room ID copied'); }}
+                          className="text-slate-500 hover:text-indigo-300 p-2 rounded-lg hover:bg-indigo-500/10 transition-all border border-transparent hover:border-indigo-500/20"
+                          title="Copy workspace ID"
+                        >
+                          <Copy className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); logActivity('opened', room.roomId); navigate(`/room/${room.roomId}`); }}
+                          className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-indigo-500/15 border border-transparent hover:border-indigo-500/25 transition-all"
+                          title="Open workspace"
+                        >
+                          <ArrowRight className="w-4 h-4" />
+                        </button>
+                        {isAdmin && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDeleteRoom(room.roomId); }}
+                            className="text-slate-500 hover:text-red-400 p-2 rounded-lg hover:bg-red-500/10 transition-all border border-transparent hover:border-red-500/20"
+                            title="Delete workspace (Admin)"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )})}
+                </div>
+              )}
+            </div>
+
           </div>
 
           {/* ══ RIGHT: Quick Actions + Templates + Latest Activity ══ */}
@@ -591,195 +780,6 @@ const Dashboard = () => {
             </div>
 
           </div>
-        </div>
-
-        {/* ── Recent Workspaces ── */}
-        <div className="glass-panel p-5 sm:p-6 rounded-2xl animate-fadeIn animate-delay-200 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent pointer-events-none"></div>
-
-          {/* Header row with filter tabs + search */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
-            <div className="flex items-center gap-2">
-              <span className="w-1.5 h-7 bg-gradient-to-b from-indigo-500 to-purple-500 rounded-full shrink-0"></span>
-              <h2 className="text-base sm:text-lg font-extrabold text-white tracking-tight">Recent Workspaces</h2>
-            </div>
-            <div className="flex items-center gap-2">
-              {/* Filter tabs */}
-              <div className="flex bg-white/[0.06] rounded-lg p-0.5 border border-white/[0.06]">
-                {[
-                  { id: 'all', label: 'All' },
-                  { id: 'pinned', label: 'Pinned' },
-                  { id: 'admin', label: 'Admin' },
-                  { id: 'recent', label: 'Recent' },
-                ].map(({ id, label }) => (
-                  <button
-                    key={id}
-                    onClick={() => setRoomFilterTab(id)}
-                    className={`px-3 py-1.5 rounded-[7px] text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all ${
-                      roomFilterTab === id
-                        ? 'bg-indigo-500/20 text-indigo-200 shadow-sm'
-                        : 'text-slate-500 hover:text-white'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <div className="relative w-44 sm:w-52">
-                <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500 pointer-events-none" />
-                <input
-                  type="search"
-                  value={roomSearch}
-                  onChange={(e) => setRoomSearch(e.target.value)}
-                  placeholder="Search..."
-                  className="w-full pl-8 pr-3 py-2 rounded-lg glass-input text-xs placeholder-slate-500"
-                />
-                {roomSearch && (
-                  <button
-                    onClick={() => setRoomSearch('')}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white p-0.5"
-                  >
-                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Loading, Error, Empty states */}
-          {isLoadingRooms ? (
-            <div className="grid md:grid-cols-2 gap-3">
-              {[1, 2, 3, 4].map((n) => (
-                <div key={n} className="glass-panel-light p-4 rounded-xl border-white/5 animate-pulse">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-lg bg-slate-700/50"></div>
-                      <div className="space-y-1.5">
-                        <div className="w-28 h-3.5 bg-slate-700/50 rounded"></div>
-                        <div className="w-20 h-2.5 bg-slate-700/30 rounded"></div>
-                      </div>
-                    </div>
-                    <div className="flex gap-1">
-                      <div className="w-8 h-8 rounded-lg bg-slate-700/50"></div>
-                      <div className="w-8 h-8 rounded-lg bg-slate-700/50"></div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : loadError ? (
-            <div className="text-center py-12 bg-slate-800/20 rounded-xl border border-dashed border-red-500/20">
-              <AlertCircle className="w-10 h-10 text-red-400 mx-auto mb-3" />
-              <p className="text-slate-300 font-medium mb-1">Failed to load workspaces</p>
-              <p className="text-xs text-slate-500 mb-4">{loadError}</p>
-              <button
-                onClick={() => window.location.reload()}
-                className="px-4 py-2 bg-indigo-500/15 text-indigo-300 hover:bg-indigo-500/25 rounded-xl text-xs font-bold border border-indigo-500/20 transition-all"
-              >
-                Retry
-              </button>
-            </div>
-          ) : recentRooms.length === 0 ? (
-            <div className="text-center py-12 bg-slate-800/20 rounded-xl border border-dashed border-slate-600/30">
-              <div className="w-12 h-12 rounded-xl bg-slate-700/30 flex items-center justify-center mx-auto mb-3">
-                <FolderOpen className="w-6 h-6 text-slate-500" />
-              </div>
-              <p className="text-slate-300 font-semibold mb-0.5">No workspaces yet</p>
-              <p className="text-xs text-slate-500">Create a new workspace or join one to get started!</p>
-            </div>
-          ) : filteredRooms.length === 0 ? (
-            <div className="text-center py-12 bg-slate-800/20 rounded-xl border border-dashed border-slate-600/30">
-              <Search className="w-10 h-10 text-slate-500 mx-auto mb-3" />
-              <p className="text-slate-300 font-medium text-sm">
-                {roomFilterTab !== 'all'
-                  ? `No rooms match the "${roomFilterTab}" filter.`
-                  : `No rooms match "${roomSearch}".`}
-              </p>
-            </div>
-          ) : (
-            <div className="grid md:grid-cols-2 gap-3">
-              {filteredRooms.map((room, idx) => {
-                const isPinned = favoriteRooms.includes(room.roomId);
-                const isAdmin = room.admin === user?.id;
-                const memberCount = room.members?.length || 1;
-                const langMap = { javascript: 'JS', python: 'Py', java: 'Java', cpp: 'C++', c: 'C' };
-                const langLabel = langMap[room.language] || room.language?.toUpperCase() || 'JS';
-                const daysSince = Math.floor((Date.now() - new Date(room.updatedAt).getTime()) / (1000 * 60 * 60 * 24));
-                const timeLabel = daysSince === 0 ? 'Today' : daysSince === 1 ? 'Yesterday' : `${daysSince}d ago`;
-                const isRecent = daysSince < 7;
-                return (
-                <div
-                  key={room._id}
-                  onClick={() => { logActivity('opened', room.roomId); navigate(`/room/${room.roomId}`); }}
-                  className="glass-panel-light p-4 rounded-xl flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2.5 hover:bg-slate-700/30 transition-all duration-300 border-white/5 hover:border-indigo-500/30 hover:shadow-[0_0_25px_rgba(99,102,241,0.15)] group animate-fadeIn cursor-pointer relative overflow-hidden"
-                  style={{ animationDelay: `${idx * 60}ms` }}
-                >
-                  <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b from-indigo-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-
-                  <div className="flex items-center gap-3 min-w-0 relative z-10">
-                    <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center border border-indigo-500/20 shrink-0 group-hover:scale-110 transition-transform duration-300">
-                      <Hash className="w-4 h-4 text-indigo-300" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-mono text-indigo-300 font-bold text-sm tracking-wide truncate">{room.roomId}</span>
-                        <div className="flex items-center gap-1">
-                          {isPinned && (
-                            <span className="text-[9px] font-bold uppercase tracking-wider text-amber-300 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/15">Pinned</span>
-                          )}
-                          {isAdmin && (
-                            <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-300 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/15">Admin</span>
-                          )}
-                          {isRecent && !isPinned && (
-                            <span className="text-[9px] font-bold uppercase tracking-wider text-cyan-300 bg-cyan-500/10 px-1.5 py-0.5 rounded border border-cyan-500/15">Recent</span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 mt-0.5 text-[10px] text-slate-500 font-medium">
-                        <span>{timeLabel}</span>
-                        <span className="w-px h-2.5 bg-white/10"></span>
-                        <span className="px-1.5 py-0.5 rounded bg-white/5 text-slate-400 font-mono text-[9px]">{langLabel}</span>
-                        <span className="w-px h-2.5 bg-white/10"></span>
-                        <span>{memberCount} member{memberCount !== 1 ? 's' : ''}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-0.5 shrink-0 relative z-10" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      onClick={() => toggleFavoriteRoom(room.roomId)}
-                      className={`p-2 rounded-lg transition-all border border-transparent ${isPinned ? 'text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/20' : 'text-slate-500 hover:text-amber-300 hover:bg-amber-500/10 hover:border-amber-500/20'}`}
-                      title={isPinned ? 'Unpin workspace' : 'Pin workspace'}
-                    >
-                      <Star className={`w-4 h-4 ${isPinned ? 'fill-current' : ''}`} />
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); copyText(room.roomId, 'Room ID copied'); }}
-                      className="text-slate-500 hover:text-indigo-300 p-2 rounded-lg hover:bg-indigo-500/10 transition-all border border-transparent hover:border-indigo-500/20"
-                      title="Copy workspace ID"
-                    >
-                      <Copy className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); logActivity('opened', room.roomId); navigate(`/room/${room.roomId}`); }}
-                      className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-indigo-500/15 border border-transparent hover:border-indigo-500/25 transition-all"
-                      title="Open workspace"
-                    >
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
-                    {isAdmin && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDeleteRoom(room.roomId); }}
-                        className="text-slate-500 hover:text-red-400 p-2 rounded-lg hover:bg-red-500/10 transition-all border border-transparent hover:border-red-500/20"
-                        title="Delete workspace (Admin)"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )})}
-            </div>
-          )}
         </div>
 
       </div>

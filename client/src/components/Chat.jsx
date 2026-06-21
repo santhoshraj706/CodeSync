@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useContext } from 'react';
 import { SocketContext } from '../context/SocketContext';
 import { AuthContext } from '../context/AuthContext';
-import { Send, Smile, MessageSquare, Search, Volume2, VolumeX, Download, ArrowDown, Reply, Edit2, X, FileText, Loader2, Sparkles } from 'lucide-react';
+import { Send, Smile, MessageSquare, Search, Volume2, VolumeX, Download, ArrowDown, Reply, Edit2, X, FileText, Loader2, Sparkles, ChevronDown } from 'lucide-react';
 import EmojiPicker from 'emoji-picker-react';
 import api from '../utils/api';
 
@@ -32,7 +32,7 @@ const playNotificationSound = () => {
   }
 };
 
-const Chat = ({ roomId, messages = [], setMessages, onMessagesUpdate }) => {
+const Chat = ({ roomId, messages = [], setMessages, onMessagesUpdate, onClosePanel }) => {
   const [message, setMessage] = useState('');
   const [showEmoji, setShowEmoji] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -204,6 +204,16 @@ const Chat = ({ roomId, messages = [], setMessages, onMessagesUpdate }) => {
           >
             {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
           </button>
+          {onClosePanel && (
+            <button
+              type="button"
+              onClick={onClosePanel}
+              className="p-2 rounded-xl border bg-white/5 border-white/5 text-slate-400 hover:text-indigo-300 hover:bg-indigo-500/10 transition-all"
+              title="Hide Chat Panel"
+            >
+              <ChevronDown className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
 

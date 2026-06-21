@@ -348,17 +348,26 @@ const Room = () => {
               <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 shadow-[0_0_6px_rgba(99,102,241,0.8)]"></div>
               Workspace
             </h2>
-            {isConnected ? (
-              <div className="flex items-center gap-1.5 px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full" title="Connected">
-                <Wifi className="w-3 h-3 text-emerald-400" />
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-1.5 px-2 py-1 bg-amber-500/10 border border-amber-500/20 rounded-full" title="Reconnecting...">
-                <WifiOff className="w-3 h-3 text-amber-400" />
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span>
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              {isConnected ? (
+                <div className="flex items-center gap-1.5 px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full" title="Connected">
+                  <Wifi className="w-3 h-3 text-emerald-400" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 px-2 py-1 bg-amber-500/10 border border-amber-500/20 rounded-full" title="Reconnecting...">
+                  <WifiOff className="w-3 h-3 text-amber-400" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span>
+                </div>
+              )}
+              <button
+                onClick={() => setShowLeftPanel(false)}
+                className="text-slate-500 hover:text-white p-1.5 rounded-lg hover:bg-white/[0.06] transition-all"
+                title="Hide Team Panel"
+              >
+                <ChevronDown className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
           <div className="p-4 border-b border-white/5 shrink-0">
             <div className="flex items-center justify-between glass-input p-3 rounded-xl group cursor-pointer hover:border-indigo-500/50 transition-all" onClick={copyRoomId}>
@@ -808,7 +817,7 @@ const Room = () => {
           className="flex flex-col relative z-10 min-h-0 animate-fadeIn animate-delay-200"
           style={isMobile ? { width: '100%', flex: 1 } : { width: `${rightWidth}px`, flexShrink: 0 }}
         >
-          <Chat roomId={roomId} messages={messages} setMessages={setMessages} onMessagesUpdate={setChatMessagesForAI} />
+          <Chat roomId={roomId} messages={messages} setMessages={setMessages} onMessagesUpdate={setChatMessagesForAI} onClosePanel={() => setShowRightPanel(false)} />
         </div>
       )}
 

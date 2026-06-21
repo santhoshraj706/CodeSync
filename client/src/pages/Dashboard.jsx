@@ -36,6 +36,9 @@ const Dashboard = () => {
   const [showJoinPassword, setShowJoinPassword] = useState(false);
   const [favoriteRooms, setFavoriteRooms] = useState([]);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [isLoadingRooms, setIsLoadingRooms] = useState(true);
+  const [loadError, setLoadError] = useState(null);
+  const [activeFormTab, setActiveFormTab] = useState('create');
   const navigate = useNavigate();
 
   const showToast = (message, type = 'error') => {
@@ -45,11 +48,16 @@ const Dashboard = () => {
 
   useEffect(() => {
     const fetchRooms = async () => {
+      setIsLoadingRooms(true);
+      setLoadError(null);
       try {
         const res = await api.get('/rooms/recent');
         setRecentRooms(res.data);
       } catch (err) {
         console.error('Failed to fetch rooms', err);
+        setLoadError('Could not load your workspaces. Check your connection and try again.');
+      } finally {
+        setIsLoadingRooms(false);
       }
     };
     fetchRooms();
@@ -168,6 +176,35 @@ const Dashboard = () => {
 
         {/* Stats Row */}
         <div className="grid sm:grid-cols-3 gap-4 animate-fadeIn animate-delay-100">
+          {isLoadingRooms ? (
+            <>
+              <div className="glass-panel-light p-5 rounded-2xl border-white/10 animate-pulse">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-24 h-3 bg-slate-700/50 rounded"></div>
+                  <div className="w-9 h-9 rounded-xl bg-slate-700/50"></div>
+                </div>
+                <div className="w-16 h-8 bg-slate-700/50 rounded mb-2"></div>
+                <div className="w-36 h-3 bg-slate-700/30 rounded"></div>
+              </div>
+              <div className="glass-panel-light p-5 rounded-2xl border-white/10 animate-pulse">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-24 h-3 bg-slate-700/50 rounded"></div>
+                  <div className="w-9 h-9 rounded-xl bg-slate-700/50"></div>
+                </div>
+                <div className="w-16 h-8 bg-slate-700/50 rounded mb-2"></div>
+                <div className="w-36 h-3 bg-slate-700/30 rounded"></div>
+              </div>
+              <div className="glass-panel-light p-5 rounded-2xl border-white/10 animate-pulse">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-24 h-3 bg-slate-700/50 rounded"></div>
+                  <div className="w-9 h-9 rounded-xl bg-slate-700/50"></div>
+                </div>
+                <div className="w-24 h-8 bg-slate-700/50 rounded mb-2"></div>
+                <div className="w-36 h-3 bg-slate-700/30 rounded"></div>
+              </div>
+            </>
+          ) : (
+            <>
           <div className="glass-panel-light p-5 rounded-2xl border-white/10 relative overflow-hidden group hover:border-indigo-500/30 transition-all duration-300">
             <div className="absolute -top-6 -right-6 w-20 h-20 bg-indigo-500/10 rounded-full blur-xl group-hover:bg-indigo-500/20 transition-colors duration-500"></div>
             <div className="flex items-center justify-between mb-3 relative">
@@ -203,6 +240,8 @@ const Dashboard = () => {
               {latestRoom ? new Date(latestRoom.updatedAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : 'Create or join a room'}
             </p>
           </div>
+          </>
+          )}
         </div>
 
         {/* Pinned / Filter Row */}
@@ -226,124 +265,155 @@ const Dashboard = () => {
           </button>
         </div>
 
-        {/* Action Grids */}
-        <div className="grid lg:grid-cols-2 gap-8 animate-fadeIn animate-delay-100">
+        {/* Create / Join — Tabbed */}
+        <div className="glass-panel p-6 sm:p-8 rounded-[2rem] animate-fadeIn animate-delay-100 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/3 via-transparent to-emerald-500/3 pointer-events-none"></div>
 
-          {/* Create Room Card */}
-          <div className="glass-panel p-8 sm:p-10 rounded-[2rem] hover:border-indigo-500/40 transition-all duration-500 shadow-xl hover:-translate-y-1 hover:shadow-[0_20px_50px_rgba(99,102,241,0.15)] group relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-40 h-40 bg-indigo-500/5 rounded-bl-full pointer-events-none group-hover:bg-indigo-500/15 transition-colors duration-500"></div>
-            <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none"></div>
+          {/* Segmented tabs */}
+          <div className="flex bg-white/[0.06] rounded-xl p-1 border border-white/[0.06] w-fit mb-8 relative z-10">
+            <button
+              type="button"
+              onClick={() => { setActiveFormTab('create'); setRoomId(''); setRoomPassword(''); }}
+              className={`px-5 py-2.5 rounded-[10px] flex items-center text-sm font-bold transition-all duration-200 ${
+                activeFormTab === 'create'
+                  ? 'bg-indigo-500/20 text-indigo-200 shadow-sm border border-indigo-500/20'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Plus className="w-4 h-4 mr-2" /> Create
+            </button>
+            <button
+              type="button"
+              onClick={() => { setActiveFormTab('join'); setRoomId(''); setRoomPassword(''); }}
+              className={`px-5 py-2.5 rounded-[10px] flex items-center text-sm font-bold transition-all duration-200 ${
+                activeFormTab === 'join'
+                  ? 'bg-emerald-500/20 text-emerald-200 shadow-sm border border-emerald-500/20'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <LogIn className="w-4 h-4 mr-2" /> Join
+            </button>
+          </div>
 
-            <h2 className="text-2xl font-extrabold mb-8 flex items-center text-white tracking-tight">
-              <div className="w-12 h-12 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-xl flex items-center justify-center mr-4 border border-indigo-500/30 group-hover:scale-110 transition-transform duration-500 shadow-[0_0_15px_rgba(99,102,241,0.2)]">
-                <Plus className="w-6 h-6 text-indigo-400" />
-              </div>
-              Create New Room
-            </h2>
-            <form onSubmit={handleCreateRoom} className="space-y-5 relative z-10">
-              <div className="group/input">
-                <div className="flex items-center justify-between ml-1 mb-2">
-                  <label className="text-[11px] text-slate-400 font-bold uppercase tracking-widest group-focus-within/input:text-indigo-400 transition-colors">Room ID</label>
-                  <button
-                    type="button"
-                    onClick={generateRoomId}
-                    className="text-[11px] text-indigo-300 hover:text-white font-bold uppercase tracking-wider flex items-center gap-1 transition-colors"
-                  >
-                    <RefreshCw className="w-3 h-3" /> Generate
-                  </button>
+          {activeFormTab === 'create' && (
+            <div className="animate-fadeIn relative z-10">
+              <h2 className="text-xl font-extrabold mb-6 flex items-center text-white tracking-tight">
+                <div className="w-10 h-10 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-xl flex items-center justify-center mr-3 border border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.2)]">
+                  <Plus className="w-5 h-5 text-indigo-400" />
                 </div>
-                <div className="relative">
+                Create New Workspace
+              </h2>
+              <form onSubmit={handleCreateRoom} className="space-y-5 max-w-xl">
+                <div className="group/input">
+                  <div className="flex items-center justify-between ml-1 mb-2">
+                    <label className="text-[11px] text-slate-400 font-bold uppercase tracking-widest group-focus-within/input:text-indigo-400 transition-colors">Workspace ID</label>
+                    <button
+                      type="button"
+                      onClick={generateRoomId}
+                      className="text-[11px] text-indigo-300 hover:text-white font-bold uppercase tracking-wider flex items-center gap-1 transition-colors"
+                    >
+                      <RefreshCw className="w-3 h-3" /> Generate
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      name="workspaceIdInputCreate"
+                      autoComplete="off"
+                      placeholder="e.g. project-x"
+                      className="w-full p-4 rounded-xl glass-input font-medium placeholder-slate-500"
+                      value={roomId}
+                      onChange={(e) => setRoomId(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => roomId && copyText(roomId, 'Room ID copied')}
+                      disabled={!roomId}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-white disabled:opacity-30 transition-colors"
+                      title="Copy Room ID"
+                    >
+                      <Copy className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+                <div className="group/input">
+                  <label className="text-[11px] text-slate-400 font-bold uppercase tracking-widest ml-1 mb-2 block group-focus-within/input:text-indigo-400 transition-colors">Access Code</label>
+                  <div className="relative">
+                    <input
+                      type={showCreatePassword ? 'text' : 'password'}
+                      name="workspaceAccessCodeCreate"
+                      autoComplete="new-password"
+                      placeholder="Set a room access code"
+                      className="w-full p-4 pr-12 rounded-xl glass-input font-medium placeholder-slate-500"
+                      value={roomPassword}
+                      onChange={(e) => setRoomPassword(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowCreatePassword(prev => !prev)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-white transition-colors"
+                      title={showCreatePassword ? 'Hide' : 'Show'}
+                    >
+                      {showCreatePassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+                <button type="submit" className="w-full glass-button p-4 rounded-xl font-bold text-base tracking-wide mt-4 group/btn flex items-center justify-center gap-2">
+                  Create Workspace <Plus className="w-5 h-5 group-hover/btn:rotate-90 transition-transform duration-300" />
+                </button>
+              </form>
+            </div>
+          )}
+
+          {activeFormTab === 'join' && (
+            <div className="animate-fadeIn relative z-10">
+              <h2 className="text-xl font-extrabold mb-6 flex items-center text-white tracking-tight">
+                <div className="w-10 h-10 bg-gradient-to-br from-emerald-500/20 to-teal-500/20 rounded-xl flex items-center justify-center mr-3 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.2)]">
+                  <LogIn className="w-5 h-5 text-emerald-400" />
+                </div>
+                Join Existing Workspace
+              </h2>
+              <form onSubmit={handleJoinRoom} className="space-y-5 max-w-xl">
+                <div className="group/input">
+                  <label className="text-[11px] text-slate-400 font-bold uppercase tracking-widest ml-1 mb-2 block group-focus-within/input:text-emerald-400 transition-colors">Workspace ID</label>
                   <input
                     type="text"
-                    placeholder="e.g. project-x"
-                    className="w-full p-4 rounded-xl glass-input font-medium placeholder-slate-500"
+                    name="workspaceIdInputJoin"
+                    autoComplete="off"
+                    placeholder="Enter the workspace ID to join"
+                    className="w-full p-4 rounded-xl glass-input font-medium placeholder-slate-500 focus:border-emerald-500/60 focus:shadow-[0_0_15px_rgba(16,185,129,0.3)]"
                     value={roomId}
                     onChange={(e) => setRoomId(e.target.value)}
                   />
-                  <button
-                    type="button"
-                    onClick={() => roomId && copyText(roomId, 'Room ID copied')}
-                    disabled={!roomId}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-white disabled:opacity-30 transition-colors"
-                    title="Copy Room ID"
-                  >
-                    <Copy className="w-4 h-4" />
-                  </button>
                 </div>
-              </div>
-              <div className="group/input">
-                <label className="text-[11px] text-slate-400 font-bold uppercase tracking-widest ml-1 mb-2 block group-focus-within/input:text-indigo-400 transition-colors">Password</label>
-                <div className="relative">
-                  <input
-                    type={showCreatePassword ? 'text' : 'password'}
-                    placeholder="Enter room password"
-                    className="w-full p-4 pr-12 rounded-xl glass-input font-medium placeholder-slate-500"
-                    value={roomPassword}
-                    onChange={(e) => setRoomPassword(e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowCreatePassword(prev => !prev)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-white transition-colors"
-                    title={showCreatePassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showCreatePassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
+                <div className="group/input">
+                  <label className="text-[11px] text-slate-400 font-bold uppercase tracking-widest ml-1 mb-2 block group-focus-within/input:text-emerald-400 transition-colors">Access Code</label>
+                  <div className="relative">
+                    <input
+                      type={showJoinPassword ? 'text' : 'password'}
+                      name="workspaceAccessCodeJoin"
+                      autoComplete="new-password"
+                      placeholder="Enter room access code"
+                      className="w-full p-4 pr-12 rounded-xl glass-input font-medium placeholder-slate-500 focus:border-emerald-500/60 focus:shadow-[0_0_15px_rgba(16,185,129,0.3)]"
+                      value={roomPassword}
+                      onChange={(e) => setRoomPassword(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowJoinPassword(prev => !prev)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-white transition-colors"
+                      title={showJoinPassword ? 'Hide' : 'Show'}
+                    >
+                      {showJoinPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
-              </div>
-              <button type="submit" className="w-full glass-button p-4 rounded-xl font-bold text-lg tracking-wide mt-4 group/btn flex items-center justify-center gap-2">
-                Create Workspace <Plus className="w-5 h-5 group-hover/btn:rotate-90 transition-transform duration-300" />
-              </button>
-            </form>
-          </div>
-
-          {/* Join Room Card */}
-          <div className="glass-panel p-8 sm:p-10 rounded-[2rem] hover:border-emerald-500/40 transition-all duration-500 shadow-xl hover:-translate-y-1 hover:shadow-[0_20px_50px_rgba(16,185,129,0.15)] group relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-40 h-40 bg-emerald-500/5 rounded-bl-full pointer-events-none group-hover:bg-emerald-500/15 transition-colors duration-500"></div>
-            <div className="absolute -bottom-20 -right-20 w-40 h-40 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none"></div>
-
-            <h2 className="text-2xl font-extrabold mb-8 flex items-center text-white tracking-tight">
-              <div className="w-12 h-12 bg-gradient-to-br from-emerald-500/20 to-teal-500/20 rounded-xl flex items-center justify-center mr-4 border border-emerald-500/30 group-hover:scale-110 transition-transform duration-500 shadow-[0_0_15px_rgba(16,185,129,0.2)]">
-                <LogIn className="w-6 h-6 text-emerald-400" />
-              </div>
-              Join Existing Room
-            </h2>
-            <form onSubmit={handleJoinRoom} className="space-y-5 relative z-10">
-              <div className="group/input">
-                <label className="text-[11px] text-slate-400 font-bold uppercase tracking-widest ml-1 mb-2 block group-focus-within/input:text-emerald-400 transition-colors">Room ID</label>
-                <input
-                  type="text"
-                  placeholder="Enter the room ID to join"
-                  className="w-full p-4 rounded-xl glass-input font-medium placeholder-slate-500 focus:border-emerald-500/60 focus:shadow-[0_0_15px_rgba(16,185,129,0.3)]"
-                  value={roomId}
-                  onChange={(e) => setRoomId(e.target.value)}
-                />
-              </div>
-              <div className="group/input">
-                <label className="text-[11px] text-slate-400 font-bold uppercase tracking-widest ml-1 mb-2 block group-focus-within/input:text-emerald-400 transition-colors">Password</label>
-                <div className="relative">
-                  <input
-                    type={showJoinPassword ? 'text' : 'password'}
-                    placeholder="Enter room password"
-                    className="w-full p-4 pr-12 rounded-xl glass-input font-medium placeholder-slate-500 focus:border-emerald-500/60 focus:shadow-[0_0_15px_rgba(16,185,129,0.3)]"
-                    value={roomPassword}
-                    onChange={(e) => setRoomPassword(e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowJoinPassword(prev => !prev)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-white transition-colors"
-                    title={showJoinPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showJoinPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-              <button type="submit" className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 border border-emerald-400/20 shadow-[0_8px_20px_rgba(16,185,129,0.3)] hover:shadow-[0_12px_25px_rgba(16,185,129,0.4)] text-white p-4 rounded-xl font-bold text-lg tracking-wide transition-all hover:-translate-y-1 mt-4 group/btn flex items-center justify-center gap-2">
-                Join Workspace <LogIn className="w-5 h-5 group-hover/btn:translate-x-1 transition-transform" />
-              </button>
-            </form>
-          </div>
+                <button type="submit" className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 border border-emerald-400/20 shadow-[0_8px_20px_rgba(16,185,129,0.3)] hover:shadow-[0_12px_25px_rgba(16,185,129,0.4)] text-white p-4 rounded-xl font-bold text-base tracking-wide transition-all hover:-translate-y-1 mt-4 group/btn flex items-center justify-center gap-2">
+                  Join Workspace <LogIn className="w-5 h-5 group-hover/btn:translate-x-1 transition-transform" />
+                </button>
+              </form>
+            </div>
+          )}
         </div>
 
         {/* Recent Rooms List */}
@@ -366,77 +436,141 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {recentRooms.length === 0 ? (
+          {isLoadingRooms ? (
+            /* Skeleton loading for recent rooms */
+            <div className="grid md:grid-cols-2 gap-4">
+              {[1, 2, 3, 4].map((n) => (
+                <div key={n} className="glass-panel-light p-5 rounded-2xl border-white/5 animate-pulse">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-slate-700/50"></div>
+                      <div className="space-y-2">
+                        <div className="w-32 h-4 bg-slate-700/50 rounded"></div>
+                        <div className="w-24 h-3 bg-slate-700/30 rounded"></div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <div className="w-9 h-9 rounded-xl bg-slate-700/50"></div>
+                      <div className="w-9 h-9 rounded-xl bg-slate-700/50"></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : loadError ? (
+            <div className="text-center py-16 bg-slate-800/20 rounded-2xl border border-dashed border-red-500/20">
+              <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
+              <p className="text-slate-300 font-medium mb-2">Failed to load workspaces</p>
+              <p className="text-sm text-slate-500 mb-4">{loadError}</p>
+              <button
+                onClick={() => window.location.reload()}
+                className="px-5 py-2.5 bg-indigo-500/15 text-indigo-300 hover:bg-indigo-500/25 rounded-xl text-sm font-bold border border-indigo-500/20 transition-all"
+              >
+                Retry
+              </button>
+            </div>
+          ) : recentRooms.length === 0 ? (
             <div className="text-center py-16 bg-slate-800/20 rounded-2xl border border-dashed border-slate-600/30">
-              <FolderOpen className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-              <p className="text-slate-400 font-medium">No recent rooms found. Create or join one above!</p>
+              <div className="w-16 h-16 rounded-2xl bg-slate-700/30 flex items-center justify-center mx-auto mb-4">
+                <FolderOpen className="w-8 h-8 text-slate-500" />
+              </div>
+              <p className="text-slate-300 font-semibold mb-1">No workspaces yet</p>
+              <p className="text-sm text-slate-500">Create a new workspace or join one to get started!</p>
             </div>
           ) : filteredRooms.length === 0 ? (
             <div className="text-center py-16 bg-slate-800/20 rounded-2xl border border-dashed border-slate-600/30">
-              <Search className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-              <p className="text-slate-400 font-medium">
+              <Search className="w-12 h-12 text-slate-500 mx-auto mb-4" />
+              <p className="text-slate-300 font-medium">
                 {showFavoritesOnly ? 'No favorite rooms match your filters.' : `No rooms match "${roomSearch}".`}
               </p>
             </div>
           ) : (
             <div className="grid md:grid-cols-2 gap-4">
-              {filteredRooms.map((room, idx) => (
+              {filteredRooms.map((room, idx) => {
+                const isPinned = favoriteRooms.includes(room.roomId);
+                const isAdmin = room.admin === user?.id;
+                const memberCount = room.members?.length || 1;
+                const langMap = { javascript: 'JS', python: 'Py', java: 'Java', cpp: 'C++', c: 'C' };
+                const langLabel = langMap[room.language] || room.language?.toUpperCase() || 'JS';
+                const daysSince = Math.floor((Date.now() - new Date(room.updatedAt).getTime()) / (1000 * 60 * 60 * 24));
+                const timeLabel = daysSince === 0 ? 'Today' : daysSince === 1 ? 'Yesterday' : `${daysSince}d ago`;
+                const isRecent = daysSince < 7;
+                return (
                 <div
                   key={room._id}
-                  className="glass-panel-light p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 hover:bg-slate-700/30 transition-all duration-300 border-white/5 hover:border-indigo-500/30 hover:shadow-[0_0_25px_rgba(99,102,241,0.1)] group animate-fadeIn"
+                  onClick={() => navigate(`/room/${room.roomId}`)}
+                  className="glass-panel-light p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 hover:bg-slate-700/30 transition-all duration-300 border-white/5 hover:border-indigo-500/30 hover:shadow-[0_0_25px_rgba(99,102,241,0.15)] group animate-fadeIn cursor-pointer relative overflow-hidden"
                   style={{ animationDelay: `${idx * 80}ms` }}
                 >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center border border-indigo-500/20 shrink-0">
+                  {/* Hover accent line */}
+                  <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b from-indigo-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+
+                  <div className="flex items-center gap-3 min-w-0 relative z-10">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center border border-indigo-500/20 shrink-0 group-hover:scale-110 transition-transform duration-300">
                       <Hash className="w-5 h-5 text-indigo-300" />
                     </div>
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] shrink-0"></span>
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-mono text-indigo-300 font-bold tracking-wide truncate">{room.roomId}</span>
+                        <div className="flex items-center gap-1.5">
+                          {isPinned && (
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-300 bg-amber-500/10 px-1.5 py-0.5 rounded-md border border-amber-500/15">Pinned</span>
+                          )}
+                          {isAdmin && (
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-300 bg-emerald-500/10 px-1.5 py-0.5 rounded-md border border-emerald-500/15">Admin</span>
+                          )}
+                          {isRecent && !isPinned && (
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-300 bg-cyan-500/10 px-1.5 py-0.5 rounded-md border border-cyan-500/15">Recent</span>
+                          )}
+                        </div>
                       </div>
-                      <span className="text-xs text-slate-500 font-medium pl-4">
-                        Last active: {new Date(room.updatedAt).toLocaleDateString()}
-                      </span>
+                      <div className="flex items-center gap-3 mt-0.5 text-[11px] text-slate-500 font-medium">
+                        <span className="flex items-center gap-1">
+                          {timeLabel}
+                        </span>
+                        <span className="w-px h-3 bg-white/10"></span>
+                        <span className="flex items-center gap-1">
+                          <span className="px-1.5 py-0.5 rounded bg-white/5 text-slate-400 font-mono text-[10px]">{langLabel}</span>
+                        </span>
+                        <span className="w-px h-3 bg-white/10"></span>
+                        <span>{memberCount} member{memberCount !== 1 ? 's' : ''}</span>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1 shrink-0">
+                  <div className="flex items-center gap-1 shrink-0 relative z-10" onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={() => toggleFavoriteRoom(room.roomId)}
-                      className={`p-2.5 rounded-xl transition-all border border-transparent ${favoriteRooms.includes(room.roomId) ? 'text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/20' : 'text-slate-500 hover:text-amber-300 hover:bg-amber-500/10 hover:border-amber-500/20'}`}
-                      title={favoriteRooms.includes(room.roomId) ? 'Remove from favorites' : 'Add to favorites'}
+                      className={`p-2.5 rounded-xl transition-all border border-transparent ${isPinned ? 'text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/20' : 'text-slate-500 hover:text-amber-300 hover:bg-amber-500/10 hover:border-amber-500/20'}`}
+                      title={isPinned ? 'Unpin workspace' : 'Pin workspace'}
                     >
-                      <Star className={`w-5 h-5 ${favoriteRooms.includes(room.roomId) ? 'fill-current' : ''}`} />
+                      <Star className={`w-5 h-5 ${isPinned ? 'fill-current' : ''}`} />
                     </button>
                     <button
-                      onClick={() => copyText(room.roomId, 'Room ID copied')}
+                      onClick={(e) => { e.stopPropagation(); copyText(room.roomId, 'Room ID copied'); }}
                       className="text-slate-500 hover:text-indigo-300 p-2.5 rounded-xl hover:bg-indigo-500/10 transition-all border border-transparent hover:border-indigo-500/20"
-                      title="Copy Room ID"
+                      title="Copy workspace ID"
                     >
                       <Copy className="w-5 h-5" />
                     </button>
                     <button
-                      onClick={() => {
-                        setRoomId(room.roomId);
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                      }}
-                      className="text-slate-500 hover:text-emerald-300 p-2.5 rounded-xl hover:bg-emerald-500/10 transition-all border border-transparent hover:border-emerald-500/20"
-                      title="Use this Room ID"
+                      onClick={(e) => { e.stopPropagation(); navigate(`/room/${room.roomId}`); }}
+                      className="p-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-indigo-500/15 border border-transparent hover:border-indigo-500/25 transition-all"
+                      title="Open workspace"
                     >
                       <ArrowRight className="w-5 h-5" />
                     </button>
-                    {room.admin === user?.id && (
+                    {isAdmin && (
                       <button
-                        onClick={() => handleDeleteRoom(room.roomId)}
+                        onClick={(e) => { e.stopPropagation(); handleDeleteRoom(room.roomId); }}
                         className="text-slate-500 hover:text-red-400 p-2.5 rounded-xl hover:bg-red-500/10 transition-all border border-transparent hover:border-red-500/20"
-                        title="Delete Room (Admin only)"
+                        title="Delete workspace (Admin)"
                       >
                         <Trash2 className="w-5 h-5" />
                       </button>
                     )}
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
           )}
         </div>

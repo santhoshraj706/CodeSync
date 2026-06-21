@@ -7,6 +7,7 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
 import Room from './pages/Room';
+import NotFound from './pages/NotFound';
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useContext(AuthContext);
@@ -53,7 +54,7 @@ const App = () => {
                 <Room />
               </ProtectedRoute>
             } />
-            <Route path="*" element={<Navigate to="/" />} />
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </Router>
       </SocketProvider>

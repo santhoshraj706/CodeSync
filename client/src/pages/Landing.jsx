@@ -4,7 +4,7 @@ import {
   Code, Users, PenTool, Zap, Terminal, Globe, Shield, Sparkles,
   MessageSquare, ChevronRight, GitBranch, ExternalLink, Play,
   Monitor, Layout, ArrowRight, Star, BookOpen, GraduationCap,
-  Wifi, Check, ChevronDown, Plus
+  Wifi, Check, ChevronDown, Plus, Menu, X
 } from 'lucide-react';
 
 const FAQ_DATA = [
@@ -18,6 +18,7 @@ const FAQ_DATA = [
 const Landing = () => {
   const [mockupTab, setMockupTab] = useState('code');
   const [openFaq, setOpenFaq] = useState(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const observer = new IntersectionObserver((entries) => {
@@ -151,19 +152,68 @@ const Landing = () => {
     <div className="min-h-screen bg-animated-gradient text-white font-sans selection:bg-indigo-500/30">
 
       {/* Navigation Bar */}
-      <nav className="sticky top-0 z-50 border-b border-white/10 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between backdrop-blur-xl bg-[#0b0e1a]/80 shadow-[0_4px_30px_rgba(0,0,0,0.3)]">
-        <div className="flex items-center gap-2">
-          <div className="w-9 h-9 sm:w-10 sm:h-10 bg-indigo-500/20 rounded-xl flex items-center justify-center border border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.3)]">
-            <Code className="text-indigo-400 w-5 h-5 sm:w-6 sm:h-6" />
-          </div>
-          <span className="text-lg sm:text-xl font-bold tracking-wide">CodeSync</span>
-        </div>
-        <div className="flex items-center gap-3 sm:gap-4">
-          <Link to="/login" className="text-sm sm:text-base text-gray-300 hover:text-white font-medium transition-colors">Log in</Link>
-          <Link to="/signup" className="bg-indigo-500 hover:bg-indigo-600 text-white px-4 sm:px-5 py-2 rounded-xl font-semibold text-sm sm:text-base transition-all shadow-[0_0_15px_rgba(99,102,241,0.3)] hover:shadow-[0_0_20px_rgba(99,102,241,0.5)] border border-indigo-400/30">
-            Sign Up Free
+      <nav className="sticky top-0 z-50 border-b border-white/10 px-4 sm:px-6 py-3 sm:py-4 backdrop-blur-xl bg-[#0b0e1a]/80 shadow-[0_4px_30px_rgba(0,0,0,0.3)]">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-2">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 bg-indigo-500/20 rounded-xl flex items-center justify-center border border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.3)]">
+              <Code className="text-indigo-400 w-5 h-5 sm:w-6 sm:h-6" />
+            </div>
+            <span className="text-lg sm:text-xl font-bold tracking-wide">CodeSync</span>
           </Link>
+
+          {/* Desktop Nav */}
+          <div className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-300">
+            <button onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-white transition-colors">Features</button>
+            <button onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-white transition-colors">How It Works</button>
+            <button onClick={() => document.getElementById('faq')?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-white transition-colors">FAQ</button>
+            <Link to="/login" className="hover:text-white transition-colors">Log in</Link>
+            <Link to="/signup" className="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-xl font-semibold transition-all shadow-[0_0_15px_rgba(99,102,241,0.3)] hover:shadow-[0_0_20px_rgba(99,102,241,0.5)] border border-indigo-400/30">
+              Sign Up Free
+            </Link>
+          </div>
+
+          {/* Mobile Hamburger */}
+          <button onClick={() => setMobileMenuOpen(true)} className="md:hidden p-2 text-gray-300 hover:text-white transition-colors">
+            <Menu className="w-6 h-6" />
+          </button>
         </div>
+
+        {/* Mobile Menu Overlay */}
+        {mobileMenuOpen && (
+          <div className="md:hidden fixed inset-0 z-[60] bg-[#0b0e1a]/95 backdrop-blur-xl flex flex-col">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 bg-indigo-500/20 rounded-xl flex items-center justify-center border border-indigo-500/30">
+                  <Code className="text-indigo-400 w-5 h-5" />
+                </div>
+                <span className="text-lg font-bold tracking-wide">CodeSync</span>
+              </div>
+              <button onClick={() => setMobileMenuOpen(false)} className="p-2 text-gray-300 hover:text-white transition-colors">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="flex-1 flex flex-col items-center justify-center gap-6 px-4">
+              {[
+                { label: 'Home', onClick: () => { setMobileMenuOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); } },
+                { label: 'Features', onClick: () => { setMobileMenuOpen(false); document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' }); } },
+                { label: 'How It Works', onClick: () => { setMobileMenuOpen(false); document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' }); } },
+                { label: 'FAQ', onClick: () => { setMobileMenuOpen(false); document.getElementById('faq')?.scrollIntoView({ behavior: 'smooth' }); } },
+              ].map(({ label, onClick }) => (
+                <button key={label} onClick={onClick} className="text-xl font-semibold text-gray-200 hover:text-white transition-colors">
+                  {label}
+                </button>
+              ))}
+              <div className="w-full max-w-xs pt-4 border-t border-white/10 flex flex-col gap-3">
+                <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="w-full text-center py-3 rounded-xl border border-white/10 text-gray-200 font-semibold hover:bg-white/5 transition-colors">
+                  Log in
+                </Link>
+                <Link to="/signup" onClick={() => setMobileMenuOpen(false)} className="w-full text-center py-3 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white font-semibold transition-all shadow-[0_0_15px_rgba(99,102,241,0.3)] border border-indigo-400/30">
+                  Sign Up Free
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* Hero Section */}
@@ -273,7 +323,7 @@ const Landing = () => {
       </section>
 
       {/* Features Section */}
-      <section data-reveal className="max-w-6xl mx-auto px-4 sm:px-6 pb-16 sm:pb-24">
+      <section id="features" data-reveal className="max-w-6xl mx-auto px-4 sm:px-6 pb-16 sm:pb-24">
         <div className="text-center mb-10 sm:mb-14">
           <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-3 sm:mb-4">Everything you need to ship faster</h2>
           <p className="text-gray-400 text-sm sm:text-base md:text-lg max-w-2xl mx-auto">A unified workspace that brings your team and code together seamlessly.</p>
@@ -305,7 +355,7 @@ const Landing = () => {
       </section>
 
       {/* How CodeSync Works */}
-      <section data-reveal className="max-w-5xl mx-auto px-4 sm:px-6 pb-16 sm:pb-24">
+      <section id="how-it-works" data-reveal className="max-w-5xl mx-auto px-4 sm:px-6 pb-16 sm:pb-24">
         <div className="text-center mb-10 sm:mb-14">
           <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-3 sm:mb-4">How CodeSync Works</h2>
           <p className="text-gray-400 text-sm sm:text-base md:text-lg max-w-2xl mx-auto">Get your team coding together in three simple steps.</p>
@@ -337,7 +387,7 @@ const Landing = () => {
       </section>
 
       {/* FAQ */}
-      <section data-reveal className="max-w-3xl mx-auto px-4 sm:px-6 pb-16 sm:pb-24">
+      <section id="faq" data-reveal className="max-w-3xl mx-auto px-4 sm:px-6 pb-16 sm:pb-24">
         <div className="text-center mb-10 sm:mb-14">
           <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-3 sm:mb-4">Frequently Asked Questions</h2>
           <p className="text-gray-400 text-sm sm:text-base md:text-lg max-w-2xl mx-auto">Everything you need to know about CodeSync.</p>

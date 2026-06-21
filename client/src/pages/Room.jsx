@@ -35,8 +35,6 @@ const Room = () => {
   const [showLeftPanel, setShowLeftPanel] = useState(true);
   const [showRightPanel, setShowRightPanel] = useState(true);
   const [editorFontSize, setEditorFontSize] = useState(14);
-  const [editorWordWrap, setEditorWordWrap] = useState('on');
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
 
   // Adjustable layout states
   const [leftWidth, setLeftWidth] = useState(280);
@@ -248,7 +246,7 @@ const Room = () => {
       {/* Left Panel: Users & Room Info */}
       {showLeftPanel && (!isMobile || mobileTab === 'users') && (
         <div 
-          className="glass-panel rounded-2xl flex flex-col overflow-hidden border-white/10 shadow-2xl relative z-10 min-h-0 animate-fadeIn"
+          className="glass-panel rounded-2xl flex flex-col overflow-hidden border-white/10 shadow-2xl relative z-10 min-h-0"
           style={isMobile ? { width: '100%', flex: 1 } : { width: `${leftWidth}px`, flexShrink: 0 }}
         >
           <div className="p-5 border-b border-white/10 bg-white/5 backdrop-blur-md shrink-0 flex items-center justify-between">
@@ -365,29 +363,157 @@ const Room = () => {
         />
       )}
 
-      {/* Center Panel: Workspace (Editor + Output) */}
+      {/* Center: Editor / Whiteboard & Output */}
       {(!isMobile || mobileTab === 'workspace') && (
-        <div className="flex-1 flex flex-col min-w-0 relative z-10 min-h-0 gap-2 animate-fadeIn animate-delay-100">
+        <div 
+          className="flex-1 flex flex-col relative z-10 min-h-0 min-w-0"
+          style={isMobile ? { flex: 1 } : {}}
+        >
           
-          {/* Main Editor Area */}
-          <div className="flex-1 glass-panel rounded-2xl overflow-hidden border-white/10 shadow-2xl relative min-h-0 flex flex-col group">
-            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 pointer-events-none"></div>
-            <EditorComponent 
-              roomId={roomId} 
-              code={code} 
-              setCode={setCode} 
-              language={language}
-              setLanguage={setLanguage}
-              theme={editorTheme}
-              fontSize={editorFontSize}
-              wordWrap={editorWordWrap}
-              showToast={showToast}
-              onRunCode={handleRunCode}
-              isExecuting={isExecuting}
-              onToggleAI={() => setShowAI(!showAI)}
-              onOpenSettings={() => setShowSettingsModal(true)}
-            />
+          {/* Top Action Bar */}
+          <div className="h-[72px] shrink-0 glass-panel rounded-t-[2rem] border-b-0 border-white/10 flex items-center justify-between px-6 z-20 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent"></div>
+            <div className="flex space-x-2 bg-slate-900/60 p-1.5 rounded-[1.25rem] border border-white/5 backdrop-blur-md shadow-inner">
+              <button
+                className={`px-5 py-2.5 rounded-xl flex items-center text-sm font-bold transition-all duration-300 ${
+                  activeTab === 'editor' 
+                    ? 'bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-[0_4px_15px_rgba(99,102,241,0.4)]' 
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
+                onClick={() => setActiveTab('editor')}
+              >
+                <Code className="w-4 h-4 mr-2" /> Code
+              </button>
+              <button
+                className={`px-5 py-2.5 rounded-xl flex items-center text-sm font-bold transition-all duration-300 ${
+                  activeTab === 'whiteboard' 
+                    ? 'bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-[0_4px_15px_rgba(99,102,241,0.4)]' 
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
+                onClick={() => setActiveTab('whiteboard')}
+              >
+                <PenTool className="w-4 h-4 mr-2" /> Board
+              </button>
+            </div>
             
+            {activeTab === 'editor' && (
+              <div className="flex items-center space-x-2 md:space-x-3">
+                <div className="hidden xl:flex items-center gap-3 mr-1 px-3 py-2 rounded-xl bg-slate-900/60 border border-white/5 text-[11px] text-slate-400">
+                  <span className="flex items-center gap-1.5">
+                    <Code className="w-3.5 h-3.5 text-indigo-300" />
+                    {language.toUpperCase()}
+                  </span>
+                  <span className="w-px h-4 bg-white/10" />
+                  <span>{code.split('\n').length} lines</span>
+                </div>
+                <div className="hidden lg:flex items-center gap-1 px-1.5 py-1.5 rounded-xl bg-slate-900/60 border border-white/5">
+                  <Settings2 className="w-3.5 h-3.5 text-slate-500 mx-1" />
+                  <button
+                    onClick={() => setEditorFontSize(size => Math.max(11, size - 1))}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                    title="Decrease editor font size"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="w-7 text-center text-[11px] font-bold text-slate-300">{editorFontSize}</span>
+                  <button
+                    onClick={() => setEditorFontSize(size => Math.min(22, size + 1))}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                    title="Increase editor font size"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                {!isMobile && (
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setShowLeftPanel(prev => !prev)}
+                      title={showLeftPanel ? 'Hide Team Panel' : 'Show Team Panel'}
+                      className={`px-3 py-1.5 md:py-2 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all cursor-pointer flex items-center justify-center shadow-inner border ${!showLeftPanel ? 'bg-indigo-500/10 border-indigo-500/40 text-indigo-300' : 'bg-slate-900/80 hover:bg-slate-800 border-white/10 text-slate-300 hover:text-white'}`}
+                    >
+                      <Users className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setShowRightPanel(prev => !prev)}
+                      title={showRightPanel ? 'Hide Chat Panel' : 'Show Chat Panel'}
+                      className={`px-3 py-1.5 md:py-2 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all cursor-pointer flex items-center justify-center shadow-inner border ${!showRightPanel ? 'bg-indigo-500/10 border-indigo-500/40 text-indigo-300' : 'bg-slate-900/80 hover:bg-slate-800 border-white/10 text-slate-300 hover:text-white'}`}
+                    >
+                      <MessageSquare className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+                <button
+                  onClick={() => {
+                    if (!document.fullscreenElement) {
+                      document.documentElement.requestFullscreen().catch(err => console.log(err));
+                    } else {
+                      document.exitFullscreen();
+                    }
+                  }}
+                  title="Toggle Fullscreen"
+                  className="bg-slate-900/80 border border-white/10 text-slate-300 hover:text-white px-3 py-1.5 md:py-2 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all cursor-pointer hover:bg-slate-800 flex items-center justify-center shadow-inner"
+                >
+                  <Maximize2 className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={handleDownloadCode}
+                  title="Download Code"
+                  className="bg-slate-900/80 border border-white/10 text-slate-300 hover:text-white px-3 py-1.5 md:py-2 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all cursor-pointer hover:bg-slate-800 flex items-center justify-center shadow-inner"
+                >
+                  <Download className="w-4 h-4" />
+                </button>
+                <select
+                  className="bg-slate-900/80 border border-white/10 text-white text-xs md:text-sm rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent block px-2 md:px-3 py-1.5 md:py-2 outline-none transition-all cursor-pointer hover:bg-slate-800"
+                  value={editorTheme}
+                  onChange={(e) => setEditorTheme(e.target.value)}
+                >
+                  <option value="vs-dark">Dark Theme</option>
+                  <option value="light">Light Theme</option>
+                  <option value="hc-black">High Contrast</option>
+                </select>
+                <select
+                  className="bg-slate-900/80 border border-white/10 text-white text-xs md:text-sm rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent block px-2 md:px-3 py-1.5 md:py-2 outline-none transition-all cursor-pointer hover:bg-slate-800"
+                  value={language}
+                  onChange={(e) => {
+                    setLanguage(e.target.value);
+                    socket.emit('language-change', { roomId, language: e.target.value });
+                  }}
+                >
+                  <option value="javascript">JavaScript</option>
+                  <option value="python">Python</option>
+                  <option value="java">Java</option>
+                  <option value="cpp">C++</option>
+                  <option value="c">C</option>
+                </select>
+                <button
+                  onClick={handleRunCode}
+                  disabled={isExecuting}
+                  className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 border border-emerald-400/20 shadow-[0_4px_15px_rgba(16,185,129,0.2)] text-white px-3 md:px-5 py-1.5 md:py-2 rounded-xl flex items-center text-xs md:text-sm font-semibold transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:transform-none"
+                >
+                  <Play className={`w-3.5 h-3.5 mr-1.5 ${isExecuting ? 'animate-pulse' : ''}`} /> 
+                  {isExecuting ? 'Running...' : 'Run'}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Main Workspace */}
+          <div className="flex-1 relative bg-[#0f111a] border border-white/10 z-10 overflow-hidden shadow-2xl">
+            <div className={`absolute inset-0 ${activeTab === 'editor' ? 'block' : 'hidden'}`}>
+              <EditorComponent 
+                roomId={roomId} 
+                code={code} 
+                setCode={setCode} 
+                language={language} 
+                setLanguage={setLanguage} 
+                theme={editorTheme} 
+                showToast={showToast} 
+                fontSize={editorFontSize} 
+                onRunCode={handleRunCode}
+                isExecuting={isExecuting}
+                onToggleAI={() => setShowAI(p => !p)}
+              />
+            </div>
             <div className={`absolute inset-0 ${activeTab === 'whiteboard' ? 'block' : 'hidden'}`}>
               <Whiteboard roomId={roomId} isVisible={activeTab === 'whiteboard'} />
             </div>
@@ -470,26 +596,12 @@ const Room = () => {
         />
       )}
 
-      {/* Right Panel: Chat & AI */}
+      {/* Right Panel: Chat */}
       {showRightPanel && (!isMobile || mobileTab === 'chat') && (
         <div 
-          className="glass-panel rounded-2xl flex flex-col overflow-hidden border-white/10 shadow-2xl relative z-10 min-h-0 animate-fadeIn animate-delay-200"
+          className="flex flex-col relative z-10 min-h-0"
           style={isMobile ? { width: '100%', flex: 1 } : { width: `${rightWidth}px`, flexShrink: 0 }}
         >
-          <div className="p-5 border-b border-white/10 bg-white/5 backdrop-blur-md shrink-0 flex items-center justify-between">
-            <h2 className="text-sm font-bold text-indigo-400 uppercase tracking-widest">Workspace</h2>
-            {isConnected ? (
-              <div className="flex items-center gap-1.5 px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full" title="Connected">
-                <Wifi className="w-3 h-3 text-emerald-400" />
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-1.5 px-2 py-1 bg-amber-500/10 border border-amber-500/20 rounded-full" title="Reconnecting...">
-                <WifiOff className="w-3 h-3 text-amber-400" />
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span>
-              </div>
-            )}
-          </div>
           <Chat roomId={roomId} onMessagesUpdate={setChatMessagesForAI} />
         </div>
       )}
@@ -507,111 +619,6 @@ const Room = () => {
             }}
             onClose={() => setShowAI(false)}
           />
-        </div>
-      )}
-
-      {/* Settings Modal */}
-      {showSettingsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-slate-900 border border-white/10 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden transform transition-all scale-100">
-            <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between bg-gradient-to-r from-indigo-500/10 to-purple-500/10">
-              <div className="flex items-center gap-2">
-                <Settings2 className="w-5 h-5 text-indigo-400" />
-                <h3 className="font-bold text-lg text-white">Workspace Settings</h3>
-              </div>
-              <button onClick={() => setShowSettingsModal(false)} className="p-1.5 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <div className="p-6 space-y-6">
-              {/* Theme Settings */}
-              <div className="space-y-3">
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Editor Theme</label>
-                <div className="grid grid-cols-3 gap-3">
-                  {['vs-dark', 'light', 'hc-black'].map(t => (
-                    <button
-                      key={t}
-                      onClick={() => setEditorTheme(t)}
-                      className={`py-2 px-3 rounded-xl border text-sm font-medium transition-all ${
-                        editorTheme === t 
-                          ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-300 shadow-[0_0_15px_rgba(99,102,241,0.2)]' 
-                          : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:border-white/20'
-                      }`}
-                    >
-                      {t === 'vs-dark' ? 'Dark' : t === 'light' ? 'Light' : 'High Contrast'}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Font Size Settings */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Font Size</label>
-                  <span className="text-xs font-mono bg-white/10 px-2 py-0.5 rounded text-slate-300">{editorFontSize}px</span>
-                </div>
-                <input
-                  type="range"
-                  min="10"
-                  max="28"
-                  value={editorFontSize}
-                  onChange={(e) => setEditorFontSize(parseInt(e.target.value))}
-                  className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-                />
-              </div>
-
-              {/* Word Wrap Settings */}
-              <div className="space-y-3">
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Word Wrap</label>
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => setEditorWordWrap('on')}
-                    className={`flex-1 py-2 rounded-xl border text-sm font-medium transition-all ${
-                      editorWordWrap === 'on' 
-                        ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.2)]' 
-                        : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:border-white/20'
-                    }`}
-                  >
-                    Enabled
-                  </button>
-                  <button
-                    onClick={() => setEditorWordWrap('off')}
-                    className={`flex-1 py-2 rounded-xl border text-sm font-medium transition-all ${
-                      editorWordWrap === 'off' 
-                        ? 'bg-red-500/20 border-red-500/50 text-red-300 shadow-[0_0_15px_rgba(239,68,68,0.2)]' 
-                        : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:border-white/20'
-                    }`}
-                  >
-                    Disabled
-                  </button>
-                </div>
-              </div>
-            </div>
-            
-            <div className="p-4 border-t border-white/10 bg-slate-900/50">
-              <button
-                onClick={() => setShowSettingsModal(false)}
-                className="w-full py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white font-semibold rounded-xl transition-colors"
-              >
-                Done
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Global Toast */}
-      {toast && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 animate-fadeIn">
-          <div className={`px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border ${
-            toast.type === 'error' ? 'bg-red-500/10 border-red-500/20 text-red-200 backdrop-blur-xl' :
-            toast.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-200 backdrop-blur-xl' :
-            'bg-slate-800/90 border-white/10 text-white backdrop-blur-xl'
-          }`}>
-            {toast.type === 'error' ? <AlertCircle className="w-5 h-5 text-red-400" /> : <CheckCircle2 className="w-5 h-5 text-emerald-400" />}
-            <span className="text-sm font-medium pr-2">{toast.message}</span>
-          </div>
         </div>
       )}
 
@@ -639,6 +646,16 @@ const Room = () => {
             <MessageSquare className="w-5 h-5 mb-1" />
             <span className="text-[10px] font-bold tracking-wider">CHAT</span>
           </button>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {toast && (
+        <div className="fixed bottom-10 left-1/2 transform -translate-x-1/2 z-[100] animate-fadeIn">
+          <div className={`flex items-center gap-3 px-5 py-3 rounded-full shadow-2xl backdrop-blur-md border ${toast.type === 'error' ? 'bg-red-500/20 border-red-500/30 text-red-300' : 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300'}`}>
+            {toast.type === 'error' ? <AlertCircle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
+            <span className="font-semibold text-sm tracking-wide">{toast.message}</span>
+          </div>
         </div>
       )}
 

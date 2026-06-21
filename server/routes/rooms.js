@@ -4,6 +4,7 @@ const Room = require('../models/Room');
 const CodeFile = require('../models/CodeFile');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
+const { roomUsers, roomStates, roomPresenters } = require('../socket/socket');
 
 // In-memory room store fallback when database connection is down
 const memoryRooms = [];
@@ -238,6 +239,17 @@ router.delete('/:roomId', auth, async (req, res) => {
       }
 
       memoryRooms.splice(roomIndex, 1);
+
+      // Clean up in-memory socket stores and force-kick connected users
+      const roomId = req.params.roomId;
+      delete roomStates[roomId];
+      delete roomUsers[roomId];
+      delete roomPresenters[roomId];
+      const ioFallback = req.app.get('io');
+      if (ioFallback) {
+        ioFallback.to(roomId).emit('room-deleted', { roomId });
+      }
+
       return res.json({ message: 'Room deleted successfully' });
     }
 
@@ -252,6 +264,16 @@ router.delete('/:roomId', auth, async (req, res) => {
     }
 
     await Room.deleteOne({ roomId: req.params.roomId });
+
+    // Clean up in-memory socket stores and force-kick connected users
+    delete roomStates[req.params.roomId];
+    delete roomUsers[req.params.roomId];
+    delete roomPresenters[req.params.roomId];
+    const io = req.app.get('io');
+    if (io) {
+      io.to(req.params.roomId).emit('room-deleted', { roomId: req.params.roomId });
+    }
+
     res.json({ message: 'Room deleted successfully' });
   } catch (err) {
     console.error(err.message);

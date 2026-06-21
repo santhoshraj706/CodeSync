@@ -9,7 +9,7 @@ const authRoutes = require('./routes/auth');
 const roomRoutes = require('./routes/rooms');
 const executeRoutes = require('./routes/execute');
 const aiRoutes = require('./routes/ai');
-const socketHandler = require('./socket/socket');
+const { socketHandler } = require('./socket/socket');
 
 const app = express();
 const server = http.createServer(app);
@@ -27,6 +27,7 @@ const io = new Server(server, {
 });
 
 socketHandler(io);
+app.set('io', io);
 // Health check route
 app.get('/', (req, res) => {
   res.json({ status: 'ok', message: 'CodeSync Backend is running 🚀' });

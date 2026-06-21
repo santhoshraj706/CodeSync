@@ -244,6 +244,11 @@ const Room = () => {
       whiteboardStrokesRef.current = [];
     });
 
+    socket.on('room-deleted', () => {
+      showToast('Room has been deleted by admin', 'error');
+      navigate('/dashboard');
+    });
+
     return () => {
       socket.emit('leave-room', { roomId, username: user.username });
       socket.off('connect', onConnect);
@@ -265,6 +270,7 @@ const Room = () => {
       socket.off('whiteboard-history');
       socket.off('whiteboard-draw');
       socket.off('whiteboard-clear');
+      socket.off('room-deleted');
     };
   }, [roomId, user, socket]);
 

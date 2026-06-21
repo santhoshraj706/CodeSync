@@ -67,6 +67,7 @@ const Dashboard = () => {
   const [roomFilterTab, setRoomFilterTab] = useState('all');
   const [recentActivity, setRecentActivity] = useState([]);
   const activityIdRef = useRef(0);
+  const [confirmDelete, setConfirmDelete] = useState(null);
   const navigate = useNavigate();
 
   const toastTimeoutRef = useRef(null);
@@ -131,7 +132,6 @@ const Dashboard = () => {
   };
 
   const handleDeleteRoom = async (roomIdToDelete) => {
-    if (!window.confirm(`Delete room "${roomIdToDelete}"? This will permanently remove all code, messages, and whiteboard data.`)) return;
     try {
       await api.delete(`/rooms/${roomIdToDelete}`);
       setRecentRooms(prev => prev.filter(r => r.roomId !== roomIdToDelete));
@@ -653,7 +653,7 @@ const Dashboard = () => {
                         </button>
                         {isAdmin && (
                           <button
-                            onClick={(e) => { e.stopPropagation(); handleDeleteRoom(room.roomId); }}
+                            onClick={(e) => { e.stopPropagation(); setConfirmDelete(room.roomId); }}
                             className="text-slate-500 hover:text-red-400 p-2 rounded-lg hover:bg-red-500/10 transition-all border border-transparent hover:border-red-500/20"
                             title="Delete workspace (Admin)"
                           >
@@ -783,6 +783,41 @@ const Dashboard = () => {
         </div>
 
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-md animate-fadeIn px-4">
+          <div className="bg-slate-900 border border-red-500/20 p-6 rounded-2xl shadow-2xl max-w-md w-full relative">
+            <div className="w-12 h-12 mx-auto mb-4 rounded-2xl bg-red-500/15 border border-red-500/25 flex items-center justify-center">
+              <AlertCircle className="w-6 h-6 text-red-400" />
+            </div>
+            <h3 className="text-lg font-bold text-white text-center mb-2">Delete Workspace</h3>
+            <p className="text-sm text-slate-400 text-center mb-1">
+              Are you sure you want to delete <span className="font-mono text-red-300 font-semibold">{confirmDelete}</span>?
+            </p>
+            <p className="text-xs text-slate-500 text-center mb-6">
+              This will permanently remove all code, messages, and whiteboard data. This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmDelete(null)}
+                className="flex-1 py-3 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-slate-300 font-bold text-sm border border-white/[0.08] transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  handleDeleteRoom(confirmDelete);
+                  setConfirmDelete(null);
+                }}
+                className="flex-1 py-3 rounded-xl bg-red-500 hover:bg-red-400 text-white font-bold text-sm border border-red-400/30 shadow-lg shadow-red-500/20 transition-all"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Toast */}
       {toast && (

@@ -201,55 +201,59 @@ const Chat = ({ roomId, messages = [], setMessages, onMessagesUpdate, onClosePan
 
   return (
     <div className="flex flex-col h-full bg-slate-950/40 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl relative">
-      {/* Premium Header */}
-      <div className="px-5 py-4 border-b border-white/10 bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-transparent flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className="p-2 bg-indigo-500/15 rounded-xl border border-indigo-500/20 text-indigo-400">
+      {/* Header */}
+      <div className="px-5 py-4 border-b border-white/[0.07] bg-gradient-to-r from-indigo-500/[0.08] via-purple-500/[0.04] to-transparent flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-xl border border-indigo-500/25 text-indigo-400 shadow-[0_0_12px_rgba(99,102,241,0.15)]">
             <MessageSquare className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="font-semibold text-sm text-white tracking-wide">Live Discussion</h3>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">Sync Active</span>
-            </div>
+            <h3 className="font-semibold text-sm text-white tracking-tight flex items-center gap-2">
+              Team Chat
+              <span className="px-1.5 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/25 text-[9px] font-bold text-emerald-300 uppercase tracking-wider inline-flex items-center gap-1 shadow-[0_0_8px_rgba(52,211,153,0.15)]">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_6px_rgba(52,211,153,0.6)]"></span>
+                Live
+              </span>
+            </h3>
+            <p className="text-[10px] text-slate-500 font-medium mt-0.5 tracking-wide">Real-time · Synced to all members</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <button
             type="button"
             onClick={handleSummarize}
             disabled={messages.length === 0}
-            className="p-2 rounded-xl border bg-white/5 border-white/5 text-slate-400 hover:text-indigo-300 hover:bg-indigo-500/10 transition-all disabled:opacity-30 disabled:hover:bg-white/5"
+            className="p-2 rounded-xl bg-white/[0.04] border border-white/[0.06] text-slate-500 hover:text-indigo-300 hover:bg-indigo-500/10 hover:border-indigo-500/25 transition-all disabled:opacity-25 disabled:hover:bg-white/[0.04] disabled:hover:text-slate-500 disabled:hover:border-white/[0.06]"
             title="Summarize chat with AI"
           >
-            <FileText className="w-4 h-4" />
+            <Sparkles className="w-3.5 h-3.5" />
           </button>
           <button
             type="button"
             onClick={exportChat}
             disabled={messages.length === 0}
-            className="p-2 rounded-xl border bg-white/5 border-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-all disabled:opacity-30 disabled:hover:bg-white/5"
-            title="Export chat"
+            className="p-2 rounded-xl bg-white/[0.04] border border-white/[0.06] text-slate-500 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all disabled:opacity-25 disabled:hover:bg-white/[0.04] disabled:hover:text-slate-500 disabled:hover:border-white/[0.06]"
+            title="Export chat transcript"
           >
-            <Download className="w-4 h-4" />
+            <Download className="w-3.5 h-3.5" />
           </button>
           <button
             type="button"
             onClick={() => setIsMuted(prev => !prev)}
-            className={`p-2 rounded-xl border transition-all ${isMuted ? 'bg-amber-500/10 border-amber-500/20 text-amber-300' : 'bg-white/5 border-white/5 text-slate-400 hover:text-white hover:bg-white/10'}`}
+            className={`p-2 rounded-xl border transition-all ${isMuted ? 'bg-amber-500/10 border-amber-500/25 text-amber-300 shadow-[0_0_10px_rgba(251,191,36,0.1)]' : 'bg-white/[0.04] border-white/[0.06] text-slate-500 hover:text-white hover:bg-white/10 hover:border-white/20'}`}
             title={isMuted ? 'Unmute notifications' : 'Mute notifications'}
           >
-            {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            {isMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
           </button>
+          <div className="w-px h-6 bg-white/[0.06] mx-1"></div>
           {onClosePanel && (
             <button
               type="button"
               onClick={onClosePanel}
-              className="p-2 rounded-xl border bg-white/5 border-white/5 text-slate-400 hover:text-indigo-300 hover:bg-indigo-500/10 transition-all"
+              className="p-2 rounded-xl bg-white/[0.04] border border-white/[0.06] text-slate-500 hover:text-indigo-300 hover:bg-indigo-500/10 hover:border-indigo-500/25 transition-all"
               title="Hide Chat Panel"
             >
-              <ChevronDown className="w-4 h-4" />
+              <ChevronDown className="w-3.5 h-3.5" />
             </button>
           )}
         </div>

@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, AuthContext } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import Landing from './pages/Landing';
+import Guide from './pages/Guide';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
@@ -35,6 +36,7 @@ const App = () => {
                 <Landing />
               </PublicRoute>
             } />
+            <Route path="/guide" element={<Guide />} />
             <Route path="/login" element={
               <PublicRoute>
                 <Login />

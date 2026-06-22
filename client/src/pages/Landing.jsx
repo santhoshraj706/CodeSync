@@ -165,6 +165,7 @@ const Landing = () => {
           <div className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-300">
             <button onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-white transition-colors">Features</button>
             <button onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-white transition-colors">How It Works</button>
+            <Link to="/guide" className="hover:text-white transition-colors">Guide</Link>
             <button onClick={() => document.getElementById('faq')?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-white transition-colors">FAQ</button>
             <Link to="/login" className="hover:text-white transition-colors">Log in</Link>
             <Link to="/signup" className="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-xl font-semibold transition-all shadow-[0_0_15px_rgba(99,102,241,0.3)] hover:shadow-[0_0_20px_rgba(99,102,241,0.5)] border border-indigo-400/30">
@@ -197,6 +198,7 @@ const Landing = () => {
                 { label: 'Home', onClick: () => { setMobileMenuOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); } },
                 { label: 'Features', onClick: () => { setMobileMenuOpen(false); document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' }); } },
                 { label: 'How It Works', onClick: () => { setMobileMenuOpen(false); document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' }); } },
+                { label: 'Guide', onClick: () => { setMobileMenuOpen(false); window.location.href = '/guide'; } },
                 { label: 'FAQ', onClick: () => { setMobileMenuOpen(false); document.getElementById('faq')?.scrollIntoView({ behavior: 'smooth' }); } },
               ].map(({ label, onClick }) => (
                 <button key={label} onClick={onClick} className="text-xl font-semibold text-gray-200 hover:text-white transition-colors">
@@ -450,6 +452,9 @@ const Landing = () => {
               </div>
             </div>
             <div className="flex items-center gap-4 sm:gap-6 text-xs sm:text-sm text-gray-400">
+              <Link to="/guide" className="hover:text-indigo-400 transition-colors flex items-center gap-1.5">
+                <BookOpen className="w-4 h-4" /> Guide
+              </Link>
               <a href="https://github.com/santhoshraj706/CodeSync" target="_blank" rel="noopener noreferrer" className="hover:text-indigo-400 transition-colors flex items-center gap-1.5">
                 <GitBranch className="w-4 h-4" /> GitHub
               </a>

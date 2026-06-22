@@ -822,7 +822,7 @@ const Whiteboard = ({ roomId, isVisible, sharedStrokesRef, user }) => {
         })}
       </div>
 
-      <div className="absolute top-4 left-4 z-30 flex items-center gap-2 glass-panel p-2 rounded-2xl border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex-wrap">
+      <div style={{ zIndex: 30, position: 'absolute' }} className="top-4 left-4 flex items-center gap-2 glass-panel p-2 rounded-2xl border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex-wrap">
         <ToolButton icon={Pen} toolName="pen" label="Pen" />
         <ToolButton icon={Eraser} toolName="eraser" label="Eraser" />
         <ToolButton icon={Minus} toolName="straightline" label="Line" />

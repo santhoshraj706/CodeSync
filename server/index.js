@@ -6,6 +6,7 @@ const cors = require('cors');
 const { Server } = require('socket.io');
 
 const authRoutes = require('./routes/auth');
+const profileRoutes = require('./routes/profile');
 const roomRoutes = require('./routes/rooms');
 const executeRoutes = require('./routes/execute');
 const aiRoutes = require('./routes/ai');
@@ -40,6 +41,7 @@ app.get('/', (req, res) => {
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/profile', profileRoutes);
 app.use('/api/rooms', roomRoutes);
 app.use('/api/execute', executeRoutes);
 app.use('/api/ai', aiRoutes);

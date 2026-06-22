@@ -33,6 +33,8 @@ import {
   ExternalLink,
   DoorOpen,
   Loader2,
+  User,
+  Settings,
 } from 'lucide-react';
 
 const TEMPLATES = [
@@ -272,12 +274,20 @@ const Dashboard = () => {
               </p>
             </div>
           </div>
-          <button
-            onClick={handleLogout}
-            className="flex items-center px-4 py-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 rounded-xl transition-all border border-red-500/20 font-bold text-sm shadow-[0_0_15px_rgba(239,68,68,0.1)] hover:shadow-[0_0_20px_rgba(239,68,68,0.2)] relative z-10"
-          >
-            <LogOut className="w-4 h-4 mr-2" /> Sign Out
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate('/profile')}
+              className="flex items-center px-4 py-2 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 hover:text-indigo-300 rounded-xl transition-all border border-indigo-500/20 font-bold text-sm shadow-[0_0_15px_rgba(99,102,241,0.1)] hover:shadow-[0_0_20px_rgba(99,102,241,0.2)] relative z-10"
+            >
+              <User className="w-4 h-4 mr-2" /> Profile
+            </button>
+            <button
+              onClick={handleLogout}
+              className="flex items-center px-4 py-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 rounded-xl transition-all border border-red-500/20 font-bold text-sm shadow-[0_0_15px_rgba(239,68,68,0.1)] hover:shadow-[0_0_20px_rgba(239,68,68,0.2)] relative z-10"
+            >
+              <LogOut className="w-4 h-4 mr-2" /> Sign Out
+            </button>
+          </div>
         </div>
 
         {/* ── Stats Row ── */}

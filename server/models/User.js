@@ -15,6 +15,27 @@ const UserSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  fullName: {
+    type: String,
+    default: '',
+  },
+  collegeName: {
+    type: String,
+    default: '',
+  },
+  experienceLevel: {
+    type: String,
+    default: '',
+  },
+  bio: {
+    type: String,
+    default: '',
+    maxlength: 200,
+  },
+  avatarColor: {
+    type: String,
+    default: '',
+  },
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', UserSchema);

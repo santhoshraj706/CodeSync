@@ -164,7 +164,14 @@ const Room = () => {
     if (!user || !socket) return;
 
     const joinRoom = () => {
-      socket.emit('join-room', { roomId, username: user.username });
+      socket.emit('join-room', {
+        roomId,
+        username: user.username,
+        fullName: user.fullName || '',
+        collegeName: user.collegeName || '',
+        experienceLevel: user.experienceLevel || '',
+        avatarColor: user.avatarColor || '',
+      });
       setIsConnected(true);
       setIsRoomReady(true);
     };
@@ -528,40 +535,75 @@ const Room = () => {
                     className="w-10 h-10 rounded-xl flex items-center justify-center text-base font-bold mr-3 border-2 border-white/20 text-white shadow-lg"
                     style={{ background: `linear-gradient(135deg, hsl(${user?.username?.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 360}, 80%, 60%), hsl(${(user?.username?.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 360 + 40) % 360}, 80%, 40%))` }}
                   >
-                    {user?.username?.charAt(0).toUpperCase()}
+                    {(user?.fullName || user?.username)?.charAt(0).toUpperCase()}
                   </div>
                   <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-400 rounded-full border-[3px] border-[#0c0f1a] shadow-[0_0_8px_rgba(52,211,153,0.7)]"></span>
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-white font-semibold text-sm truncate">{user?.username}</span>
+                    <span className="text-white font-semibold text-sm truncate block">{user?.fullName || user?.username || 'You'}</span>
                     <span className="text-[9px] font-bold text-indigo-300 bg-indigo-500/15 px-1.5 py-0.5 rounded-md uppercase tracking-wider">You</span>
                     {currentUserIsEditing && <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse shrink-0"></span>}
                   </div>
-                  <span className="text-[11px] text-slate-500">{currentUserIsEditing ? 'Editing code' : 'Active now'}</span>
+                  <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                    <span className="text-[10px] text-slate-500">@{user?.username}</span>
+                    {(user?.collegeName) && (
+                      <>
+                        <span className="text-[8px] text-slate-600">·</span>
+                        <span className="text-[10px] text-slate-500 truncate max-w-[120px]">{user.collegeName}</span>
+                      </>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="text-[10px] text-slate-600">{currentUserIsEditing ? 'Editing code' : 'Active now'}</span>
+                    {(user?.experienceLevel) && (
+                      <>
+                        <span className="text-[8px] text-slate-600">·</span>
+                        <span className="text-[9px] text-indigo-400/60 font-medium">{user.experienceLevel}</span>
+                      </>
+                    )}
+                  </div>
                 </div>
               </li>
               
               {/* Other Users */}
               {activeUsers.map((u, i) => {
                 const hue = u.username?.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 360;
+                const displayName = u.fullName || u.username || 'Unknown User';
                 return (
                   <li key={u.socketId} className="flex items-center bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.06] hover:border-white/[0.12] rounded-xl p-3 transition-all duration-200 animate-fadeIn group" style={{animationDelay: `${(i+1)*100}ms`}}>
                     <div className="relative">
                       <div 
                         className="w-10 h-10 rounded-xl flex items-center justify-center text-base font-bold mr-3 border border-white/10 text-white shadow-md"
-                        style={{ background: `linear-gradient(135deg, hsl(${hue}, 70%, 55%), hsl(${(hue + 40) % 360}, 70%, 35%))` }}
+                        style={{ background: u.avatarColor ? u.avatarColor : `linear-gradient(135deg, hsl(${hue}, 70%, 55%), hsl(${(hue + 40) % 360}, 70%, 35%))` }}
                       >
-                        {u.username?.charAt(0).toUpperCase()}
+                        {displayName.charAt(0).toUpperCase()}
                       </div>
                       <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-400 rounded-full border-[3px] border-[#0d1117] shadow-[0_0_6px_rgba(52,211,153,0.5)] animate-pulse"></span>
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-slate-300 font-medium text-sm group-hover:text-white transition-colors truncate block">{u.username}</span>
+                        <span className="text-slate-300 font-medium text-sm group-hover:text-white transition-colors truncate block">{displayName}</span>
                         {u.isEditing && <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse shrink-0"></span>}
                       </div>
-                      <span className="text-[11px] text-slate-600">{u.isEditing ? 'Editing code' : 'Active now'}</span>
+                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                        <span className="text-[10px] text-slate-500">@{u.username || 'No username'}</span>
+                        {(u.collegeName) && (
+                          <>
+                            <span className="text-[8px] text-slate-600">·</span>
+                            <span className="text-[10px] text-slate-500 truncate max-w-[120px]">{u.collegeName}</span>
+                          </>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-[10px] text-slate-600">{u.isEditing ? 'Editing code' : 'Active now'}</span>
+                        {(u.experienceLevel) && (
+                          <>
+                            <span className="text-[8px] text-slate-600">·</span>
+                            <span className="text-[9px] text-indigo-400/60 font-medium">{u.experienceLevel}</span>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </li>
                 );

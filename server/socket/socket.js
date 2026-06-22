@@ -13,7 +13,7 @@ const socketHandler = (io) => {
     let currentRoomId = null;
     let currentUsername = 'A user';
 
-    socket.on('join-room', async ({ roomId, username }) => {
+    socket.on('join-room', async ({ roomId, username, fullName: fn, collegeName: cn, experienceLevel: el, avatarColor: ac }) => {
       currentRoomId = roomId;
       currentUsername = username;
       socket.join(roomId);
@@ -21,7 +21,31 @@ const socketHandler = (io) => {
       // Track active socket connections in memory
       if (!roomUsers[roomId]) roomUsers[roomId] = [];
       roomUsers[roomId] = roomUsers[roomId].filter(u => u.socketId !== socket.id);
-      roomUsers[roomId].push({ username, socketId: socket.id, isEditing: false });
+
+      // Use client-provided profile data, or look up from DB
+      let profileData = {
+        fullName: fn || '',
+        collegeName: cn || '',
+        experienceLevel: el || '',
+        avatarColor: ac || '',
+      };
+      if (!fn && !cn && !el && !ac) {
+        try {
+          const userDoc = await User.findOne({ username }).select('fullName collegeName experienceLevel avatarColor');
+          if (userDoc) {
+            profileData = {
+              fullName: userDoc.fullName || '',
+              collegeName: userDoc.collegeName || '',
+              experienceLevel: userDoc.experienceLevel || '',
+              avatarColor: userDoc.avatarColor || '',
+            };
+          }
+        } catch (e) {
+          // Non-fatal; profile data optional
+        }
+      }
+
+      roomUsers[roomId].push({ username, socketId: socket.id, isEditing: false, ...profileData });
 
       // Broadcast full active users list to EVERYONE in the room
       io.to(roomId).emit('active-users', roomUsers[roomId]);

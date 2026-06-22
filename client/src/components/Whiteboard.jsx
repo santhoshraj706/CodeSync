@@ -777,20 +777,40 @@ const Whiteboard = ({ roomId, isVisible, sharedStrokesRef, user }) => {
         {Object.entries(remoteCursors).map(([id, cursor]) => (
             <div
               key={id}
-              className="whiteboard-cursor"
               style={{
+                position: 'absolute',
                 left: cursor.x,
                 top: cursor.y,
-                borderColor: cursor.avatarColor || '#8b5cf6',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '4px',
+                pointerEvents: 'none',
+                zIndex: 20,
               }}
             >
             <span
-              className="whiteboard-cursor-dot"
-              style={{ backgroundColor: cursor.avatarColor || '#8b5cf6' }}
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: '50%',
+                border: '2px solid #fff',
+                flexShrink: 0,
+                boxShadow: '0 0 8px rgba(0,0,0,0.5)',
+                backgroundColor: cursor.avatarColor || '#8b5cf6',
+              }}
             />
             <span
-              className="whiteboard-cursor-label"
-              style={{ backgroundColor: cursor.avatarColor || '#8b5cf6' }}
+              style={{
+                fontSize: 10,
+                fontWeight: 600,
+                color: '#fff',
+                padding: '2px 7px',
+                borderRadius: 6,
+                whiteSpace: 'nowrap',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
+                letterSpacing: '0.02em',
+                backgroundColor: cursor.avatarColor || '#8b5cf6',
+              }}
             >
               {cursor.fullName || cursor.username || 'User'}
             </span>

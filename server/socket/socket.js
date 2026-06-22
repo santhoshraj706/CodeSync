@@ -22,22 +22,23 @@ const socketHandler = (io) => {
       if (!roomUsers[roomId]) roomUsers[roomId] = [];
       roomUsers[roomId] = roomUsers[roomId].filter(u => u.socketId !== socket.id);
 
-      // Use client-provided profile data, or look up from DB
+      // Use client-provided profile data, filling any gaps from DB
       let profileData = {
         fullName: fn || '',
         collegeName: cn || '',
         experienceLevel: el || '',
         avatarColor: ac || '',
       };
-      if (!fn && !cn && !el && !ac) {
+      const missingFields = !fn || !cn || !el || !ac;
+      if (missingFields) {
         try {
           const userDoc = await User.findOne({ username }).select('fullName collegeName experienceLevel avatarColor');
           if (userDoc) {
             profileData = {
-              fullName: userDoc.fullName || '',
-              collegeName: userDoc.collegeName || '',
-              experienceLevel: userDoc.experienceLevel || '',
-              avatarColor: userDoc.avatarColor || '',
+              fullName: userDoc.fullName || fn || '',
+              collegeName: userDoc.collegeName || cn || '',
+              experienceLevel: userDoc.experienceLevel || el || '',
+              avatarColor: userDoc.avatarColor || ac || '',
             };
           }
         } catch (e) {

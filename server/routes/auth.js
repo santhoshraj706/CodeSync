@@ -39,7 +39,7 @@ router.post('/signup', async (req, res) => {
 
       jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '7d' }, (err, token) => {
         if (err) throw err;
-        res.json({ token, user: { id: newUser.id, username: newUser.username, email: newUser.email } });
+        res.json({ token, user: { id: newUser.id, username: newUser.username, email: newUser.email, fullName: '', collegeName: '', experienceLevel: '', bio: '', avatarColor: '' } });
       });
       return;
     }
@@ -66,13 +66,15 @@ router.post('/signup', async (req, res) => {
 
     await user.save();
 
+    const userData = await User.findById(user.id).select('-password');
+
     const payload = {
       user: { id: user.id, username: user.username }
     };
 
     jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '7d' }, (err, token) => {
       if (err) throw err;
-      res.json({ token, user: { id: user.id, username: user.username, email: user.email } });
+      res.json({ token, user: userData || { id: user.id, username: user.username, email: user.email, fullName: '', collegeName: '', experienceLevel: '', bio: '', avatarColor: '' } });
     });
   } catch (err) {
     console.error(err.message);
@@ -105,7 +107,7 @@ router.post('/login', async (req, res) => {
 
       jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '7d' }, (err, token) => {
         if (err) throw err;
-        res.json({ token, user: { id: user.id, username: user.username, email: user.email } });
+        res.json({ token, user: { id: user.id, username: user.username, email: user.email, fullName: user.fullName || '', collegeName: user.collegeName || '', experienceLevel: user.experienceLevel || '', bio: user.bio || '', avatarColor: user.avatarColor || '' } });
       });
       return;
     }
@@ -120,13 +122,15 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Invalid Credentials' });
     }
 
+    const userData = await User.findById(user.id).select('-password');
+
     const payload = {
       user: { id: user.id, username: user.username }
     };
 
     jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '7d' }, (err, token) => {
       if (err) throw err;
-      res.json({ token, user: { id: user.id, username: user.username, email: user.email } });
+      res.json({ token, user: userData || { id: user.id, username: user.username, email: user.email, fullName: '', collegeName: '', experienceLevel: '', bio: '', avatarColor: '' } });
     });
   } catch (err) {
     console.error(err.message);

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useContext } from 'react';
 import { SocketContext } from '../context/SocketContext';
 import { AuthContext } from '../context/AuthContext';
-import { Send, Smile, MessageSquare, Search, Volume2, VolumeX, Download, ArrowDown, Reply, Edit2, X, FileText, Loader2, Sparkles, ChevronDown } from 'lucide-react';
+import { Send, Smile, MessageSquare, Search, Volume2, VolumeX, Download, ArrowDown, Reply, Edit2, Trash2, X, FileText, Loader2, Sparkles, ChevronDown } from 'lucide-react';
 import EmojiPicker from 'emoji-picker-react';
 import api from '../utils/api';
 
@@ -32,7 +32,7 @@ const playNotificationSound = () => {
   }
 };
 
-const Chat = ({ roomId, messages = [], setMessages, onMessagesUpdate, onClosePanel }) => {
+const Chat = ({ roomId, messages = [], setMessages, onMessagesUpdate, onClosePanel, roomAdminId }) => {
   const [message, setMessage] = useState('');
   const [showEmoji, setShowEmoji] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -150,6 +150,44 @@ const Chat = ({ roomId, messages = [], setMessages, onMessagesUpdate, onClosePan
     link.download = `codesync-chat-${roomId}-${Date.now()}.txt`;
     link.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleDeleteMessage = (msgId) => {
+    if (!socket) return;
+    socket.emit('delete-message', { roomId, id: msgId });
+    setMessages(prev => {
+      const updated = prev.filter(m => m.id !== msgId);
+      onMessagesUpdate?.(updated);
+      return updated;
+    });
+  };
+
+  const formatRelativeTime = (timestamp) => {
+    const now = Date.now();
+    const diff = now - new Date(timestamp).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days}d ago`;
+    return new Date(timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' });
+  };
+
+  const formatDateSeparator = (timestamp) => {
+    const d = new Date(timestamp);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (d.toDateString() === today.toDateString()) return 'Today';
+    if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
+    return d.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  const isSameDay = (a, b) => {
+    if (!a || !b) return false;
+    return new Date(a).toDateString() === new Date(b).toDateString();
   };
 
   const visibleMessages = messages.filter((msg) => {
@@ -281,7 +319,7 @@ const Chat = ({ roomId, messages = [], setMessages, onMessagesUpdate, onClosePan
       )}
 
       {/* Message Area */}
-      <div ref={chatContainerRef} className={`flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar bg-slate-950/20 relative ${showSummary ? 'hidden' : ''}`}>
+      <div ref={chatContainerRef} className={`flex-1 overflow-y-auto p-5 space-y-1 custom-scrollbar bg-slate-950/20 relative ${showSummary ? 'hidden' : ''}`}>
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center p-6 space-y-3">
             <div className="p-3 bg-white/5 rounded-2xl border border-white/5 text-gray-400">
@@ -303,64 +341,86 @@ const Chat = ({ roomId, messages = [], setMessages, onMessagesUpdate, onClosePan
         ) : (
           visibleMessages.map((msg, idx) => {
             const isMe = msg.username === user.username;
+            const prevMsg = idx > 0 ? visibleMessages[idx - 1] : null;
+            const showDateSep = !prevMsg || !isSameDay(prevMsg.timestamp, msg.timestamp);
+            const isConsecutive = prevMsg && prevMsg.username === msg.username && isSameDay(prevMsg.timestamp, msg.timestamp);
             return (
-              <div key={idx} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-fadeIn`}>
-                <div className={`flex items-center gap-1.5 mb-1.5 px-1 ${isMe ? 'flex-row-reverse' : ''}`}>
-                  {!isMe && (
-                    <div 
-                      className="w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold text-white shadow-sm border border-white/10 shrink-0"
-                      style={{ background: `linear-gradient(135deg, hsl(${msg.username?.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 360}, 70%, 55%), hsl(${(msg.username?.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 360 + 40) % 360}, 70%, 35%))` }}
-                    >
-                      {msg.username?.charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                  <span className="text-[10px] uppercase tracking-wider text-indigo-300 font-bold shrink-0">
-                    {isMe ? 'You' : msg.username}
-                  </span>
-                </div>
-                
-                {msg.replyTo && (
-                  <div className={`flex items-center gap-2 mb-1 opacity-70 text-[10px] ${isMe ? 'mr-2' : 'ml-8'}`}>
-                    <Reply className="w-3 h-3 text-slate-400" />
-                    <div className="bg-white/5 border border-white/5 rounded-lg px-2 py-1 max-w-[150px] truncate">
-                      <span className="font-bold text-indigo-300 mr-1">{msg.replyToUser}:</span>
-                      <span className="text-slate-300">{msg.replyToText}</span>
-                    </div>
+              <div key={msg.id || idx}>
+                {showDateSep && (
+                  <div className="flex items-center gap-3 my-4">
+                    <div className="flex-1 h-px bg-white/5"></div>
+                    <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest whitespace-nowrap">
+                      {formatDateSeparator(msg.timestamp)}
+                    </span>
+                    <div className="flex-1 h-px bg-white/5"></div>
                   </div>
                 )}
-
-                <div className="relative group/bubble flex items-center max-w-full">
-                  {isMe && (
-                    <div className="absolute right-full mr-2 flex items-center gap-1 opacity-0 group-hover/bubble:opacity-100 transition-opacity pointer-events-none group-hover/bubble:pointer-events-auto">
-                      <button onClick={() => { setEditingMessage(msg); setMessage(msg.message); setReplyingTo(null); }} className="p-1.5 bg-slate-800 text-slate-300 hover:text-white rounded-full shadow-lg border border-white/10 hover:bg-slate-700" title="Edit"><Edit2 className="w-3 h-3" /></button>
-                      <button onClick={() => { setReplyingTo(msg); setEditingMessage(null); }} className="p-1.5 bg-slate-800 text-slate-300 hover:text-white rounded-full shadow-lg border border-white/10 hover:bg-slate-700" title="Reply"><Reply className="w-3 h-3" /></button>
+                <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-fadeIn ${showDateSep ? 'mt-1' : ''} message-item`}>
+                  {(!isConsecutive || !isMe) && (
+                    <div className={`flex items-center gap-1.5 mb-1.5 px-1 ${isMe ? 'flex-row-reverse' : ''}`}>
+                      {!isMe && (
+                        <div 
+                          className="w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold text-white shadow-sm border border-white/10 shrink-0"
+                          style={{ background: `linear-gradient(135deg, hsl(${msg.username?.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 360}, 70%, 55%), hsl(${(msg.username?.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 360 + 40) % 360}, 70%, 35%))` }}
+                        >
+                          {msg.username?.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      {(!isConsecutive || isMe) && (
+                        <span className="text-[10px] uppercase tracking-wider text-indigo-300 font-bold shrink-0">
+                          {isMe ? 'You' : msg.username}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  
+                  {msg.replyTo && (
+                    <div className={`flex items-center gap-2 mb-1 opacity-70 text-[10px] ${isMe ? 'mr-2' : 'ml-8'} ${isConsecutive && !isMe ? 'ml-8' : ''}`}>
+                      <Reply className="w-3 h-3 text-slate-400" />
+                      <div className="bg-white/5 border border-white/5 rounded-lg px-2 py-1 max-w-[150px] truncate">
+                        <span className="font-bold text-indigo-300 mr-1">{msg.replyToUser}:</span>
+                        <span className="text-slate-300">{msg.replyToText}</span>
+                      </div>
                     </div>
                   )}
 
-                  <div className={`px-4 py-2.5 rounded-2xl max-w-xs md:max-w-sm lg:max-w-md shadow-lg transition-all duration-300 hover:scale-[1.01] relative ${
-                    isMe 
-                      ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-tr-none border border-indigo-400/40 shadow-indigo-500/10' 
-                      : 'bg-white/5 backdrop-blur-md text-slate-100 rounded-tl-none border border-white/10 shadow-black/10'
-                  }`}>
-                    <p className="break-words text-sm leading-relaxed font-normal whitespace-pre-wrap">{msg.message}</p>
+                  <div className={`relative group/bubble flex items-center max-w-full ${isConsecutive && !isMe ? 'ml-8' : ''}`}>
+                    {isMe && (
+                      <div className="absolute right-full mr-2 flex items-center gap-1 opacity-40 hover:opacity-100 transition-opacity">
+                        <button onClick={() => { setEditingMessage(msg); setMessage(msg.message); setReplyingTo(null); }} className="p-1.5 bg-slate-800 text-slate-300 hover:text-white rounded-full shadow-lg border border-white/10 hover:bg-slate-700" title="Edit"><Edit2 className="w-3 h-3" /></button>
+                        <button onClick={() => { setReplyingTo(msg); setEditingMessage(null); }} className="p-1.5 bg-slate-800 text-slate-300 hover:text-white rounded-full shadow-lg border border-white/10 hover:bg-slate-700" title="Reply"><Reply className="w-3 h-3" /></button>
+                        <button onClick={() => handleDeleteMessage(msg.id)} className="p-1.5 bg-slate-800 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-full shadow-lg border border-white/10" title="Delete"><Trash2 className="w-3 h-3" /></button>
+                      </div>
+                    )}
+
+                    <div className={`px-4 py-2.5 rounded-2xl max-w-xs md:max-w-sm lg:max-w-md shadow-lg transition-all duration-200 relative group ${
+                      isMe 
+                        ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-tr-none border border-indigo-400/40 shadow-indigo-500/10 hover:shadow-indigo-500/20' 
+                        : 'bg-white/5 backdrop-blur-md text-slate-100 rounded-tl-none border border-white/10 shadow-black/10 hover:bg-white/[0.07]'
+                    } ${isConsecutive ? (isMe ? 'rounded-tr-lg' : 'rounded-tl-lg') : ''}`}>
+                      <p className="break-words text-sm leading-relaxed font-normal whitespace-pre-wrap">{msg.message}</p>
+                    </div>
+
+                    {!isMe && (
+                      <div className="absolute left-full ml-2 flex items-center gap-1 opacity-40 hover:opacity-100 transition-opacity">
+                        <button onClick={() => { setReplyingTo(msg); setEditingMessage(null); }} className="p-1.5 bg-slate-800 text-slate-300 hover:text-white rounded-full shadow-lg border border-white/10 hover:bg-slate-700" title="Reply"><Reply className="w-3 h-3" /></button>
+                        {user.id === roomAdminId && (
+                          <button onClick={() => handleDeleteMessage(msg.id)} className="p-1.5 bg-slate-800 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-full shadow-lg border border-white/10" title="Delete"><Trash2 className="w-3 h-3" /></button>
+                        )}
+                      </div>
+                    )}
                   </div>
-
-                  {!isMe && (
-                    <div className="absolute left-full ml-2 flex items-center gap-1 opacity-0 group-hover/bubble:opacity-100 transition-opacity pointer-events-none group-hover/bubble:pointer-events-auto">
-                      <button onClick={() => { setReplyingTo(msg); setEditingMessage(null); }} className="p-1.5 bg-slate-800 text-slate-300 hover:text-white rounded-full shadow-lg border border-white/10 hover:bg-slate-700" title="Reply"><Reply className="w-3 h-3" /></button>
-                    </div>
-                  )}
-                </div>
-                <div className="flex items-center gap-1 mt-1 px-1">
-                  <span className="text-[9px] text-slate-500 tracking-tight flex items-center gap-1">
-                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    {msg.isEdited && <span className="italic opacity-70">(edited)</span>}
-                  </span>
-                  {isMe && (
-                    <svg className="w-3 h-3 text-indigo-400 opacity-70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12"></polyline>
-                    </svg>
-                  )}
+                  <div className="flex items-center gap-1 mt-1 px-1">
+                    <span className="text-[9px] text-slate-500 tracking-tight flex items-center gap-1" title={new Date(msg.timestamp).toLocaleString()}>
+                      {formatRelativeTime(msg.timestamp)}
+                      {msg.isEdited && <span className="italic opacity-70 ml-1">· edited</span>}
+                    </span>
+                    {isMe && (
+                      <svg className="w-3 h-3 text-indigo-400/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                    )}
+                  </div>
                 </div>
               </div>
             );

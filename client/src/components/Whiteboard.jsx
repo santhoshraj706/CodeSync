@@ -1,12 +1,18 @@
 import React, { useRef, useEffect, useState, useContext, useCallback } from 'react';
 import { SocketContext } from '../context/SocketContext';
-import { Trash2, Pen, Eraser, Undo2, Circle, Square, Minus, Type, FileText, Download } from 'lucide-react';
+import { Trash2, Pen, Eraser, Undo2, Circle, Square, Minus, Type, FileText, Download, AlertTriangle, Grid, Eye, EyeOff } from 'lucide-react';
 
 const COLORS = [
   '#FFFFFF', '#FF6B6B', '#FFE66D', '#4ECDC4', '#45B7D1',
   '#96CEB4', '#FFEAA7', '#DDA0DD', '#FF8C42', '#98D8C8',
   '#F7DC6F', '#BB8FCE', '#85C1E9', '#82E0AA', '#F1948A'
 ];
+
+const COLOR_NAMES = {
+  '#FFFFFF': 'White', '#FF6B6B': 'Red', '#FFE66D': 'Yellow', '#4ECDC4': 'Teal', '#45B7D1': 'Blue',
+  '#96CEB4': 'Sage', '#FFEAA7': 'Cream', '#DDA0DD': 'Plum', '#FF8C42': 'Orange', '#98D8C8': 'Mint',
+  '#F7DC6F': 'Gold', '#BB8FCE': 'Lavender', '#85C1E9': 'Sky', '#82E0AA': 'Green', '#F1948A': 'Salmon'
+};
 
 const BRUSH_SIZES = [2, 4, 6, 10, 16];
 
@@ -55,6 +61,11 @@ const Whiteboard = ({ roomId, isVisible, sharedStrokesRef }) => {
 
   // Sticky Notes State
   const [notes, setNotes] = useState([]);
+
+  // Board UI extras
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [showGrid, setShowGrid] = useState(true);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
   // Compute sticky notes state from whiteboard history
   const rebuildNotesFromHistory = (history) => {
@@ -317,13 +328,15 @@ const Whiteboard = ({ roomId, isVisible, sharedStrokesRef }) => {
   };
 
   const handleMouseMove = (e) => {
-    if (!isDrawing) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
-
     const rect = canvas.getBoundingClientRect();
     const actualX = e.clientX - rect.left;
     const actualY = e.clientY - rect.top;
+    setMousePos({ x: Math.round(actualX), y: Math.round(actualY) });
+
+    if (!isDrawing) return;
+
     const virtualX = toVirtualX(actualX, canvasSize.width);
     const virtualY = toVirtualY(actualY, canvasSize.height);
     const ctx = contextRef.current;
@@ -622,12 +635,19 @@ const Whiteboard = ({ roomId, isVisible, sharedStrokesRef }) => {
                 backgroundColor: note.color,
                 color: fontColor
               }}
-              className="absolute w-52 p-3.5 rounded-2xl shadow-xl flex flex-col gap-2 pointer-events-auto cursor-default animate-fadeIn select-none border border-black/10 group active:scale-[0.99] transition-transform"
+              className="absolute w-52 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.4)] flex flex-col pointer-events-auto cursor-default animate-fadeIn select-none border border-black/10 group active:scale-[0.99] transition-transform overflow-hidden"
             >
+              {/* Pin icon at top center */}
+              <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 z-10">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="rgba(0,0,0,0.25)" className="drop-shadow-sm">
+                  <path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/>
+                </svg>
+              </div>
+
               {/* Header/Dragbar */}
               <div 
                 onMouseDown={(e) => handleNoteDragStart(e, note.id)}
-                className="h-5 flex items-center justify-between cursor-grab active:cursor-grabbing border-b border-black/10 pb-1.5"
+                className="h-6 flex items-center justify-between cursor-grab active:cursor-grabbing px-3 pt-2"
               >
                 <div className="flex gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-black/25"></span>
@@ -636,7 +656,7 @@ const Whiteboard = ({ roomId, isVisible, sharedStrokesRef }) => {
                 </div>
                 <button
                   onClick={() => handleNoteDelete(note.id)}
-                  className="w-4.5 h-4.5 rounded-lg flex items-center justify-center text-xs opacity-40 hover:opacity-100 hover:bg-black/15 transition-all text-black border-none cursor-pointer"
+                  className="w-5 h-5 rounded-lg flex items-center justify-center text-xs opacity-30 hover:opacity-100 hover:bg-black/15 transition-all text-black border-none cursor-pointer"
                 >
                   &times;
                 </button>
@@ -648,7 +668,7 @@ const Whiteboard = ({ roomId, isVisible, sharedStrokesRef }) => {
                 onChange={(e) => handleNoteTextChange(note.id, e.target.value)}
                 placeholder="Type note content..."
                 style={{ color: fontColor }}
-                className="w-full h-24 bg-transparent outline-none border-none text-xs font-semibold leading-relaxed resize-none placeholder-black/30"
+                className="w-full h-24 bg-transparent outline-none border-none text-xs font-semibold leading-relaxed resize-none placeholder-black/30 px-3 pb-3 pt-1"
               />
             </div>
           );
@@ -693,10 +713,11 @@ const Whiteboard = ({ roomId, isVisible, sharedStrokesRef }) => {
                 color === c ? 'border-white scale-125 shadow-[0_0_12px_rgba(255,255,255,0.5)] z-10' : 'border-transparent hover:scale-110 hover:border-white/50'
               }`}
               style={{ backgroundColor: c }}
-              title={c}
+              title={`${COLOR_NAMES[c] || c} (${c})`}
             />
           ))}
         </div>
+        <span className="text-[10px] font-mono text-slate-500 min-w-[52px]">{color}</span>
 
         <div className="w-px h-8 bg-white/10 mx-2" />
 
@@ -731,12 +752,37 @@ const Whiteboard = ({ roomId, isVisible, sharedStrokesRef }) => {
         </button>
 
         <button
-          onClick={() => clearCanvas(true)}
-          className="p-2.5 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all duration-200 border border-red-500/20 hover:border-red-400 hover:shadow-[0_0_15px_rgba(239,68,68,0.4)] ml-1"
+          onClick={() => setShowClearConfirm(true)}
+          className="p-2.5 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all duration-200 border border-red-500/20 hover:border-red-400 hover:shadow-[0_0_15px_rgba(239,68,68,0.4)]"
           title="Clear Entire Board"
         >
           <Trash2 className="w-4 h-4" />
         </button>
+
+        <div className="w-px h-8 bg-white/10 mx-1" />
+
+        <button
+          onClick={() => setShowGrid(prev => !prev)}
+          className={`p-2.5 rounded-xl transition-all duration-200 border ${
+            showGrid
+              ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
+              : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white border-transparent hover:border-white/10'
+          }`}
+          title={showGrid ? 'Hide Grid' : 'Show Grid'}
+        >
+          <Grid className="w-4 h-4" />
+        </button>
+      </div>
+
+      <div className={`absolute inset-0 pointer-events-none ${showGrid ? '' : 'opacity-0'}`}>
+        <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern id="dot-grid" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
+              <circle cx="2" cy="2" r="1" fill="rgba(255,255,255,0.06)" />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#dot-grid)" />
+        </svg>
       </div>
 
       <canvas
@@ -745,8 +791,51 @@ const Whiteboard = ({ roomId, isVisible, sharedStrokesRef }) => {
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={() => { if (isDrawing) handleMouseUp({ nativeEvent: { offsetX: lastPos.x, offsetY: lastPos.y } }); }}
-        className={`block touch-none ${tool === 'eraser' ? 'cursor-cell' : tool === 'text' ? 'cursor-text' : 'cursor-crosshair'}`}
+        className={`block touch-none relative z-10 ${tool === 'eraser' ? 'cursor-cell' : tool === 'text' ? 'cursor-text' : 'cursor-crosshair'}`}
       />
+
+      {/* Bottom status bar */}
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-30 px-3 py-1.5 bg-slate-900/80 backdrop-blur-md border border-white/10 rounded-xl flex items-center gap-3 text-[10px] text-slate-500 font-medium">
+        <span className="flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+          {tool.charAt(0).toUpperCase() + tool.slice(1)}
+        </span>
+        <span className="w-px h-3 bg-white/10"></span>
+        <span>{strokesRef.current.filter(s => s.type !== 'stickynote').length} strokes</span>
+        <span className="w-px h-3 bg-white/10"></span>
+        <span className="font-mono">{mousePos.x}, {mousePos.y}</span>
+      </div>
+
+      {/* Clear confirmation dialog */}
+      {showClearConfirm && (
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn">
+          <div className="glass-panel p-6 rounded-2xl border border-red-500/20 w-80 flex flex-col gap-4 shadow-2xl bg-slate-900/90">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-red-500/15 rounded-xl border border-red-500/20">
+                <AlertTriangle className="w-5 h-5 text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-white">Clear Board</h3>
+                <p className="text-xs text-slate-400">This action cannot be undone.</p>
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end mt-2">
+              <button
+                onClick={() => setShowClearConfirm(false)}
+                className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl text-xs font-semibold transition-all active:scale-95"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { clearCanvas(true); setShowClearConfirm(false); }}
+                className="px-4 py-2 bg-red-500 hover:bg-red-600 border border-red-400/30 rounded-xl text-xs font-semibold text-white shadow-lg shadow-red-500/20 transition-all active:scale-95"
+              >
+                Clear All
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Floating Dialog Form for entering text */}
       {textInsertCoords && (

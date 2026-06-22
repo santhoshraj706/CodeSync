@@ -1,8 +1,10 @@
 const Room = require('../models/Room');
+const User = require('../models/User');
 
 const roomUsers = {}; // { roomId: [{ username, socketId }] } — active connections only (in-memory)
 const roomStates = {}; // { roomId: { code: string, language: string, messages: Array, strokes: Array } } - active room state cache
 const roomPresenters = {}; // { roomId: username } - tracks active presenter
+const roomAdmins = {}; // { roomId: { id: string, username: string } } - cached admin info for delete authorization
 
 const socketHandler = (io) => {
   io.on('connection', (socket) => {
@@ -23,6 +25,9 @@ const socketHandler = (io) => {
 
       // Broadcast full active users list to EVERYONE in the room
       io.to(roomId).emit('active-users', roomUsers[roomId]);
+
+      // Notify others that a new user joined
+      socket.to(roomId).emit('user-joined', { username });
 
       // --- Room State Loading ---
       // Always load from DB if the in-memory cache is absent or has never
@@ -59,6 +64,17 @@ const socketHandler = (io) => {
             roomStates[roomId].testCases = room.testCases || [];
             roomStates[roomId].runHistory = room.runHistory || [];
             roomStates[roomId].codeComments = room.codeComments || [];
+          }
+          if (room && room.admin) {
+            // Cache admin info for delete-message authorization
+            try {
+              const adminUser = await User.findById(room.admin).select('username');
+              if (adminUser) {
+                roomAdmins[roomId] = { id: adminUser._id.toString(), username: adminUser.username };
+              }
+            } catch (adminErr) {
+              console.error('Error loading admin info:', adminErr.message);
+            }
           }
         } catch (err) {
           console.error('Error loading room state from MongoDB:', err.message);
@@ -166,6 +182,37 @@ const socketHandler = (io) => {
           } 
         }
       ).catch(err => console.error('DB Error updating message:', err.message));
+    });
+
+    socket.on('delete-message', ({ roomId, id }) => {
+      // Find the message in cache
+      let msg = null;
+      if (roomStates[roomId]) {
+        msg = roomStates[roomId].messages.find(m => m.id === id);
+      }
+
+      if (!msg) return;
+
+      // Check authorization: must be the message author OR the room admin
+      const isAuthor = msg.username === currentUsername;
+      const adminInfo = roomAdmins[roomId];
+      const isAdmin = adminInfo && adminInfo.username === currentUsername;
+
+      if (!isAuthor && !isAdmin) return;
+
+      // Remove from in-memory cache
+      if (roomStates[roomId]) {
+        roomStates[roomId].messages = roomStates[roomId].messages.filter(m => m.id !== id);
+      }
+
+      // Broadcast deletion to ALL clients
+      io.to(roomId).emit('message-deleted', { id });
+
+      // Remove from MongoDB
+      Room.updateOne(
+        { roomId },
+        { $pull: { messages: { id } } }
+      ).catch(err => console.error('DB Error deleting message:', err.message));
     });
 
     socket.on('whiteboard-draw', ({ roomId, drawData }) => {
@@ -296,7 +343,11 @@ const socketHandler = (io) => {
 
     const leaveRoomHandler = (roomId, socketId) => {
       if (roomUsers[roomId]) {
+        const leavingUser = roomUsers[roomId].find(u => u.socketId === socketId);
         roomUsers[roomId] = roomUsers[roomId].filter(u => u.socketId !== socketId);
+        if (leavingUser) {
+          io.to(roomId).emit('user-left', { username: leavingUser.username });
+        }
         io.to(roomId).emit('active-users', roomUsers[roomId]);
 
         // Clean up inactive room cache to prevent memory leaks when room becomes empty
@@ -356,4 +407,4 @@ const socketHandler = (io) => {
   });
 };
 
-module.exports = { socketHandler, roomUsers, roomStates, roomPresenters };
+module.exports = { socketHandler, roomUsers, roomStates, roomPresenters, roomAdmins };

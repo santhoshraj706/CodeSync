@@ -52,6 +52,7 @@ const Room = () => {
   const [bottomTab, setBottomTab] = useState('terminal');
 
   const [codeComments, setCodeComments] = useState([]);
+  const [roomAdminId, setRoomAdminId] = useState(null);
 
   const [leftWidth, setLeftWidth] = useState(280);
   const [rightWidth, setRightWidth] = useState(320);
@@ -64,6 +65,13 @@ const Room = () => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   };
+
+  useEffect(() => {
+    if (!roomId) return;
+    api.get(`/rooms/${roomId}`).then(res => {
+      setRoomAdminId(res.data.admin);
+    }).catch(() => {});
+  }, [roomId]);
 
   const applyPreset = (preset) => {
     setPresetAnimating(preset);
@@ -244,6 +252,22 @@ const Room = () => {
       whiteboardStrokesRef.current = [];
     });
 
+    socket.on('user-joined', ({ username }) => {
+      showToast(`${username} joined the room`, 'success');
+    });
+
+    socket.on('user-left', ({ username }) => {
+      showToast(`${username} left the room`, 'info');
+    });
+
+    socket.on('message-deleted', ({ id }) => {
+      setMessages(prev => {
+        const updated = prev.filter(m => m.id !== id);
+        setChatMessagesForAI(updated);
+        return updated;
+      });
+    });
+
     socket.on('room-deleted', () => {
       showToast('Room has been deleted by admin', 'error');
       navigate('/dashboard');
@@ -270,6 +294,9 @@ const Room = () => {
       socket.off('whiteboard-history');
       socket.off('whiteboard-draw');
       socket.off('whiteboard-clear');
+      socket.off('user-joined');
+      socket.off('user-left');
+      socket.off('message-deleted');
       socket.off('room-deleted');
     };
   }, [roomId, user, socket]);
@@ -967,7 +994,7 @@ const Room = () => {
           className="flex flex-col relative z-10 min-h-0 animate-fadeIn animate-delay-200"
           style={isMobile ? { width: '100%', flex: 1 } : { width: `${rightWidth}px`, flexShrink: 0 }}
         >
-          <Chat roomId={roomId} messages={messages} setMessages={setMessages} onMessagesUpdate={setChatMessagesForAI} onClosePanel={() => setShowRightPanel(false)} />
+          <Chat roomId={roomId} messages={messages} setMessages={setMessages} onMessagesUpdate={setChatMessagesForAI} onClosePanel={() => setShowRightPanel(false)} roomAdminId={roomAdminId} />
         </div>
       )}
 

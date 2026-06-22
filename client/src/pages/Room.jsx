@@ -931,7 +931,7 @@ const Room = () => {
               />
             </div>
             <div className={`absolute inset-0 ${activeTab === 'whiteboard' ? 'block' : 'hidden'}`}>
-              <Whiteboard roomId={roomId} isVisible={activeTab === 'whiteboard'} sharedStrokesRef={whiteboardStrokesRef} />
+              <Whiteboard roomId={roomId} isVisible={activeTab === 'whiteboard'} sharedStrokesRef={whiteboardStrokesRef} user={user} />
             </div>
           </div>
 

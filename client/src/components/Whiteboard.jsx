@@ -36,7 +36,7 @@ const getContrastColor = (hexColor) => {
   return (yiq >= 128) ? '#1e293b' : '#ffffff';
 };
 
-const Whiteboard = ({ roomId, isVisible, sharedStrokesRef }) => {
+const Whiteboard = ({ roomId, isVisible, sharedStrokesRef, user }) => {
   const canvasRef = useRef(null);
   const contextRef = useRef(null);
   const socket = useContext(SocketContext);
@@ -49,8 +49,12 @@ const Whiteboard = ({ roomId, isVisible, sharedStrokesRef }) => {
   const [snapshotData, setSnapshotData] = useState(null);
   const [undoStack, setUndoStack] = useState([]);
   const lastPosRef = useRef({ x: 0, y: 0 });
+  const lastActualPosRef = useRef({ x: 0, y: 0 });
   const localStrokesRef = useRef([]);
   const strokesRef = sharedStrokesRef || localStrokesRef;
+  const [remoteCursors, setRemoteCursors] = useState({});
+  const cursorThrottleRef = useRef(null);
+  const boardRef = useRef(null);
 
   // Track canvas size in state to trigger React re-renders for absolute elements (like Sticky Notes)
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
@@ -199,18 +203,69 @@ const Whiteboard = ({ roomId, isVisible, sharedStrokesRef }) => {
     socket.on('whiteboard-draw', onDraw);
     socket.on('whiteboard-clear', onClear);
 
+    const onCursorUpdate = ({ socketId, username, fullName, avatarColor, x, y }) => {
+      if (socketId === socket.id) return;
+      // Convert virtual coords to CSS pixels for this client's canvas size
+      const localCanvas = canvasRef.current;
+      if (!localCanvas) return;
+      const cssX = toActualX(x, localCanvas.width);
+      const cssY = toActualY(y, localCanvas.height);
+      setRemoteCursors(prev => {
+        const newState = {
+          ...prev,
+          [socketId]: { username, fullName, avatarColor, x: cssX, y: cssY, lastUpdated: Date.now() }
+        };
+        return newState;
+      });
+    };
+
+    const onCursorRemove = ({ socketId }) => {
+      setRemoteCursors(prev => {
+        const next = { ...prev };
+        delete next[socketId];
+        return next;
+      });
+    };
+
+    socket.on('whiteboard-cursor-update', onCursorUpdate);
+    socket.on('whiteboard-cursor-remove', onCursorRemove);
+
     return () => {
+      if (socket && roomId) {
+        socket.emit('whiteboard-cursor-leave', { roomId, socketId: socket.id });
+      }
       socket.off('whiteboard-history', onHistory);
       socket.off('whiteboard-draw', onDraw);
       socket.off('whiteboard-clear', onClear);
+      socket.off('whiteboard-cursor-update', onCursorUpdate);
+      socket.off('whiteboard-cursor-remove', onCursorRemove);
     };
-  }, [socket]);
+  }, [socket, user]);
 
   // Rebuild sticky notes from existing history on mount (crucial for tab switching sync)
   useEffect(() => {
     if (strokesRef.current && strokesRef.current.length > 0) {
       rebuildNotesFromHistory(strokesRef.current);
     }
+  }, []);
+
+  // Clean stale cursors not updated for 6 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now();
+      setRemoteCursors(prev => {
+        const next = { ...prev };
+        let changed = false;
+        for (const id of Object.keys(next)) {
+          if (now - next[id].lastUpdated > 6000) {
+            delete next[id];
+            changed = true;
+          }
+        }
+        return changed ? next : prev;
+      });
+    }, 2000);
+    return () => clearInterval(interval);
   }, []);
 
   // Use ResizeObserver to detect parent panel resize (handles resizable panels & window resize)
@@ -223,18 +278,18 @@ const Whiteboard = ({ roomId, isVisible, sharedStrokesRef }) => {
         const { width, height } = entry.contentRect;
         if (width === 0 || height === 0) continue;
 
-        // Set canvas dimensions
+        // Set canvas buffer dimensions to match parent CSS size
         canvas.width = width;
         canvas.height = height;
 
         // Update state to trigger re-positioning of sticky notes
         setCanvasSize({ width, height });
 
-        // Configure context with scale factor
+        // Configure context with scale factor (use setTransform, not scale, to avoid cumulative transforms)
         const ctx = canvas.getContext('2d');
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
-        ctx.scale(width / VIRTUAL_WIDTH, height / VIRTUAL_HEIGHT);
+        ctx.setTransform(width / VIRTUAL_WIDTH, 0, 0, height / VIRTUAL_HEIGHT, 0, 0);
         contextRef.current = ctx;
 
         // Redraw all strokes
@@ -286,11 +341,10 @@ const Whiteboard = ({ roomId, isVisible, sharedStrokesRef }) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const rect = canvas.getBoundingClientRect();
-    const actualX = e.clientX - rect.left;
-    const actualY = e.clientY - rect.top;
-    const virtualX = toVirtualX(actualX, canvasSize.width);
-    const virtualY = toVirtualY(actualY, canvasSize.height);
+    const actualX = e.nativeEvent.offsetX;
+    const actualY = e.nativeEvent.offsetY;
+    const virtualX = toVirtualX(actualX, canvas.width);
+    const virtualY = toVirtualY(actualY, canvas.height);
 
     if (tool === 'text') {
       setTextInsertCoords({ x: virtualX, y: virtualY });
@@ -330,15 +384,34 @@ const Whiteboard = ({ roomId, isVisible, sharedStrokesRef }) => {
   const handleMouseMove = (e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const actualX = e.clientX - rect.left;
-    const actualY = e.clientY - rect.top;
+    const actualX = e.nativeEvent.offsetX;
+    const actualY = e.nativeEvent.offsetY;
     setMousePos({ x: Math.round(actualX), y: Math.round(actualY) });
+
+    // Throttled cursor broadcast — send in virtual coords for cross-client consistency
+    const virtualX = toVirtualX(actualX, canvas.width);
+    const virtualY = toVirtualY(actualY, canvas.height);
+    if (!cursorThrottleRef.current) {
+      cursorThrottleRef.current = requestAnimationFrame(() => {
+        cursorThrottleRef.current = null;
+        if (socket && user && roomId) {
+          socket.emit('whiteboard-cursor-move', {
+            roomId,
+            socketId: socket.id,
+            userId: user._id || user.id,
+            username: user.username,
+            fullName: user.fullName || '',
+            avatarColor: user.avatarColor || '',
+            x: Math.round(virtualX),
+            y: Math.round(virtualY),
+          });
+        }
+      });
+    }
 
     if (!isDrawing) return;
 
-    const virtualX = toVirtualX(actualX, canvasSize.width);
-    const virtualY = toVirtualY(actualY, canvasSize.height);
+    lastActualPosRef.current = { x: actualX, y: actualY };
     const ctx = contextRef.current;
     if (!ctx) return;
 
@@ -405,11 +478,10 @@ const Whiteboard = ({ roomId, isVisible, sharedStrokesRef }) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const rect = canvas.getBoundingClientRect();
-    const actualX = e.clientX - rect.left;
-    const actualY = e.clientY - rect.top;
-    const virtualX = toVirtualX(actualX, canvasSize.width);
-    const virtualY = toVirtualY(actualY, canvasSize.height);
+    const actualX = e.nativeEvent ? e.nativeEvent.offsetX : e.offsetX;
+    const actualY = e.nativeEvent ? e.nativeEvent.offsetY : e.offsetY;
+    const virtualX = toVirtualX(actualX, canvas.width);
+    const virtualY = toVirtualY(actualY, canvas.height);
 
     if ((tool === 'rect' || tool === 'circle' || tool === 'straightline') && shapeStart) {
       emitDraw({
@@ -450,8 +522,8 @@ const Whiteboard = ({ roomId, isVisible, sharedStrokesRef }) => {
     const note = notes.find(n => n.id === noteId);
     if (!note) return;
     
-    const actualX0 = toActualX(note.x0, canvasSize.width);
-    const actualY0 = toActualY(note.y0, canvasSize.height);
+    const actualX0 = toActualX(note.x0, canvas.width);
+    const actualY0 = toActualY(note.y0, canvas.height);
 
     const startX = e.clientX - actualX0;
     const startY = e.clientY - actualY0;
@@ -460,8 +532,8 @@ const Whiteboard = ({ roomId, isVisible, sharedStrokesRef }) => {
       const actualNewX = moveEvent.clientX - startX;
       const actualNewY = moveEvent.clientY - startY;
 
-      const virtualNewX = toVirtualX(actualNewX, canvasSize.width);
-      const virtualNewY = toVirtualY(actualNewY, canvasSize.height);
+      const virtualNewX = toVirtualX(actualNewX, canvas.width);
+      const virtualNewY = toVirtualY(actualNewY, canvas.height);
 
       setNotes(prev => prev.map(n => n.id === noteId ? { ...n, x0: virtualNewX, y0: virtualNewY } : n));
     };
@@ -473,8 +545,8 @@ const Whiteboard = ({ roomId, isVisible, sharedStrokesRef }) => {
       const actualNewX = upEvent.clientX - startX;
       const actualNewY = upEvent.clientY - startY;
 
-      const virtualNewX = toVirtualX(actualNewX, canvasSize.width);
-      const virtualNewY = toVirtualY(actualNewY, canvasSize.height);
+      const virtualNewX = toVirtualX(actualNewX, canvas.width);
+      const virtualNewY = toVirtualY(actualNewY, canvas.height);
 
       const currentNote = notes.find(n => n.id === noteId);
       if (currentNote) {
@@ -541,8 +613,8 @@ const Whiteboard = ({ roomId, isVisible, sharedStrokesRef }) => {
 
     // Draw sticky notes on top of drawings
     notes.forEach(note => {
-      const leftPos = toActualX(note.x0, canvasSize.width);
-      const topPos = toActualY(note.y0, canvasSize.height);
+      const leftPos = toActualX(note.x0, canvas.width);
+      const topPos = toActualY(note.y0, canvas.height);
       const noteW = 208; // width 52 in tailwind is 13rem = 208px
       const noteH = 130;
 
@@ -790,9 +862,40 @@ const Whiteboard = ({ roomId, isVisible, sharedStrokesRef }) => {
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
-        onMouseLeave={() => { if (isDrawing) handleMouseUp({ nativeEvent: { offsetX: lastPos.x, offsetY: lastPos.y } }); }}
-        className={`block touch-none relative z-10 ${tool === 'eraser' ? 'cursor-cell' : tool === 'text' ? 'cursor-text' : 'cursor-crosshair'}`}
+        onMouseLeave={() => {
+          if (socket && roomId) {
+            socket.emit('whiteboard-cursor-leave', { roomId, socketId: socket.id });
+          }
+          if (isDrawing) handleMouseUp({ nativeEvent: { offsetX: lastActualPosRef.current.x, offsetY: lastActualPosRef.current.y } });
+        }}
+        className={`absolute inset-0 touch-none z-10 ${tool === 'eraser' ? 'cursor-cell' : tool === 'text' ? 'cursor-text' : 'cursor-crosshair'}`}
       />
+
+      {/* Remote cursors overlay */}
+      <div className="absolute inset-0 pointer-events-none z-20">
+        {Object.entries(remoteCursors).map(([id, cursor]) => (
+            <div
+              key={id}
+              className="whiteboard-cursor"
+              style={{
+                left: cursor.x,
+                top: cursor.y,
+                borderColor: cursor.avatarColor || '#8b5cf6',
+              }}
+            >
+            <span
+              className="whiteboard-cursor-dot"
+              style={{ backgroundColor: cursor.avatarColor || '#8b5cf6' }}
+            />
+            <span
+              className="whiteboard-cursor-label"
+              style={{ backgroundColor: cursor.avatarColor || '#8b5cf6' }}
+            >
+              {cursor.fullName || cursor.username || 'User'}
+            </span>
+            </div>
+          ))}
+      </div>
 
       {/* Bottom status bar */}
       <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-30 px-3 py-1.5 bg-slate-900/80 backdrop-blur-md border border-white/10 rounded-xl flex items-center gap-3 text-[10px] text-slate-500 font-medium">

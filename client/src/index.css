@@ -1538,6 +1538,42 @@ code {
   100% { transform: translate(-30px, 40px) rotate(-20deg) scale(0.9); }
 }
 
+/* ─── WHITEBOARD REMOTE CURSORS ─── */
+.whiteboard-cursor {
+  position: absolute;
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.whiteboard-cursor svg {
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.5));
+  flex-shrink: 0;
+}
+
+.whiteboard-cursor-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  flex-shrink: 0;
+  box-shadow: 0 0 8px rgba(0,0,0,0.5);
+}
+
+.whiteboard-cursor-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #fff;
+  padding: 2px 7px;
+  border-radius: 6px;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  letter-spacing: 0.02em;
+  margin-top: -2px;
+}
+
 /* ─── TERMINAL CUBE LOADER ─── */
 .terminal-cube-loader-wrap {
   width: 100%;

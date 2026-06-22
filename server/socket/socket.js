@@ -305,6 +305,14 @@ const socketHandler = (io) => {
       Room.updateOne({ roomId }, { strokes: [] }).catch(err => console.error('DB Error clearing board:', err.message));
     });
 
+    socket.on('whiteboard-cursor-move', ({ roomId, socketId, userId, username, fullName, avatarColor, x, y }) => {
+      socket.to(roomId).emit('whiteboard-cursor-update', { socketId, userId, username, fullName, avatarColor, x, y });
+    });
+
+    socket.on('whiteboard-cursor-leave', ({ roomId, socketId }) => {
+      socket.to(roomId).emit('whiteboard-cursor-remove', { socketId });
+    });
+
     socket.on('start-presenting', ({ roomId, username }) => {
       roomPresenters[roomId] = username;
       socket.to(roomId).emit('start-presenting', { username });

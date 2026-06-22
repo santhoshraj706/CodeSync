@@ -408,7 +408,7 @@ const Chat = ({ roomId, messages = [], setMessages, onMessagesUpdate, onClosePan
                     {!isMe && (
                       <div className="absolute left-full ml-2 flex items-center gap-1 opacity-40 hover:opacity-100 transition-opacity">
                         <button onClick={() => { setReplyingTo(msg); setEditingMessage(null); }} className="p-1.5 bg-slate-800 text-slate-300 hover:text-white rounded-full shadow-lg border border-white/10 hover:bg-slate-700" title="Reply"><Reply className="w-3 h-3" /></button>
-                        {user.id === roomAdminId && (
+                        {(user._id === roomAdminId || user.id === roomAdminId) && (
                           <button onClick={() => handleDeleteMessage(msg.id)} className="p-1.5 bg-slate-800 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-full shadow-lg border border-white/10" title="Delete"><Trash2 className="w-3 h-3" /></button>
                         )}
                       </div>

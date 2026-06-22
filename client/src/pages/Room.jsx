@@ -8,9 +8,10 @@ import Whiteboard from '../components/Whiteboard';
 import OutputWindow from '../components/OutputWindow';
 import TestRunner from '../components/TestRunner';
 import AIAssistant from '../components/AIAssistant';
+import NotesPanel from '../components/NotesPanel';
 import api from '../utils/api';
 import confetti from 'canvas-confetti';
-import { Users, Code, PenTool, Play, LogOut, Copy, Hash, MessageSquare, Download, Wifi, WifiOff, CheckCircle2, AlertCircle, Keyboard, X, Sparkles, PanelBottom, Maximize2, Minimize2, Settings2, Plus, Minus, MonitorPlay, MonitorStop, Terminal, Layers, ChevronDown, DoorOpen, Loader2 } from 'lucide-react';
+import { Users, Code, PenTool, Play, LogOut, Copy, Hash, MessageSquare, Download, Wifi, WifiOff, CheckCircle2, AlertCircle, Keyboard, X, Sparkles, PanelBottom, Maximize2, Minimize2, Settings2, Plus, Minus, MonitorPlay, MonitorStop, Terminal, Layers, ChevronDown, DoorOpen, Loader2, FileText } from 'lucide-react';
 
 const Room = () => {
   const { roomId } = useParams();
@@ -58,6 +59,7 @@ const Room = () => {
   const [rightWidth, setRightWidth] = useState(320);
   const [isResizingLeft, setIsResizingLeft] = useState(false);
   const [isResizingRight, setIsResizingRight] = useState(false);
+  const [rightPanelTab, setRightPanelTab] = useState('chat');
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 1024 : false);
   const [mobileTab, setMobileTab] = useState('workspace');
 
@@ -275,6 +277,10 @@ const Room = () => {
       });
     });
 
+    socket.on('notes-notification', ({ message }) => {
+      if (message) showToast(message, 'info');
+    });
+
     socket.on('room-deleted', () => {
       showToast('Room has been deleted by admin', 'error');
       navigate('/dashboard');
@@ -304,6 +310,7 @@ const Room = () => {
       socket.off('user-joined');
       socket.off('user-left');
       socket.off('message-deleted');
+      socket.off('notes-notification');
       socket.off('room-deleted');
     };
   }, [roomId, user, socket]);
@@ -1030,13 +1037,47 @@ const Room = () => {
         />
       )}
 
-      {/* Right Panel: Chat */}
-      {showRightPanel && (!isMobile || mobileTab === 'chat') && (
+      {/* Right Panel: Chat / Notes */}
+      {showRightPanel && (!isMobile || mobileTab === 'chat' || mobileTab === 'notes') && (
         <div 
           className="flex flex-col relative z-10 min-h-0 animate-fadeIn animate-delay-200"
           style={isMobile ? { width: '100%', flex: 1 } : { width: `${rightWidth}px`, flexShrink: 0 }}
         >
-          <Chat roomId={roomId} messages={messages} setMessages={setMessages} onMessagesUpdate={setChatMessagesForAI} onClosePanel={() => setShowRightPanel(false)} roomAdminId={roomAdminId} />
+          {/* Tab headers */}
+          <div className="flex bg-[#0c0f1a] border-b border-white/10 rounded-t-2xl shrink-0 overflow-hidden items-center">
+            <button
+              onClick={() => setRightPanelTab('chat')}
+              className={`flex-1 py-3 text-[11px] font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all ${
+                rightPanelTab === 'chat'
+                  ? 'text-indigo-300 bg-indigo-500/10 border-b-2 border-indigo-400'
+                  : 'text-slate-500 hover:text-slate-300 border-b-2 border-transparent'
+              }`}
+            >
+              <MessageSquare className="w-3.5 h-3.5" /> Chat
+            </button>
+            <button
+              onClick={() => setRightPanelTab('notes')}
+              className={`flex-1 py-3 text-[11px] font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all ${
+                rightPanelTab === 'notes'
+                  ? 'text-indigo-300 bg-indigo-500/10 border-b-2 border-indigo-400'
+                  : 'text-slate-500 hover:text-slate-300 border-b-2 border-transparent'
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5" /> Notes
+            </button>
+            <button
+              onClick={() => setShowRightPanel(false)}
+              className="px-3 py-3 text-slate-500 hover:text-indigo-300 hover:bg-white/[0.04] transition-all border-b-2 border-transparent"
+              title="Hide Panel"
+            >
+              <ChevronDown className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          {rightPanelTab === 'chat' ? (
+            <Chat roomId={roomId} messages={messages} setMessages={setMessages} onMessagesUpdate={setChatMessagesForAI} onClosePanel={() => setShowRightPanel(false)} roomAdminId={roomAdminId} />
+          ) : (
+            <NotesPanel roomId={roomId} socket={socket} />
+          )}
         </div>
       )}
 
@@ -1074,11 +1115,18 @@ const Room = () => {
             <span className="text-[10px] font-bold tracking-wider">WORK</span>
           </button>
           <button 
-            onClick={() => setMobileTab('chat')}
-            className={`flex flex-col items-center justify-center w-full h-full rounded-xl transition-all ${mobileTab === 'chat' ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-400 hover:text-white'}`}
+            onClick={() => { setMobileTab('chat'); setRightPanelTab('chat'); }}
+            className={`flex flex-col items-center justify-center w-full h-full rounded-xl transition-all ${(mobileTab === 'chat' && rightPanelTab === 'chat') ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-400 hover:text-white'}`}
           >
             <MessageSquare className="w-5 h-5 mb-1" />
             <span className="text-[10px] font-bold tracking-wider">CHAT</span>
+          </button>
+          <button 
+            onClick={() => { setMobileTab('notes'); setRightPanelTab('notes'); }}
+            className={`flex flex-col items-center justify-center w-full h-full rounded-xl transition-all ${(mobileTab === 'notes' && rightPanelTab === 'notes') ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-400 hover:text-white'}`}
+          >
+            <FileText className="w-5 h-5 mb-1" />
+            <span className="text-[10px] font-bold tracking-wider">NOTES</span>
           </button>
         </div>
       )}
@@ -1086,8 +1134,8 @@ const Room = () => {
       {/* Toast */}
       {toast && (
         <div className="fixed bottom-6 md:bottom-10 left-1/2 transform -translate-x-1/2 z-[100] animate-fadeIn px-4 w-full md:w-auto">
-          <div className={`flex items-center gap-3 px-4 md:px-5 py-2.5 md:py-3 rounded-full shadow-2xl backdrop-blur-md border text-sm ${toast.type === 'error' ? 'bg-red-500/20 border-red-500/30 text-red-300' : 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300'}`}>
-            {toast.type === 'error' ? <AlertCircle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
+          <div className={`flex items-center gap-3 px-4 md:px-5 py-2.5 md:py-3 rounded-full shadow-2xl backdrop-blur-md border text-sm ${toast.type === 'error' ? 'bg-red-500/20 border-red-500/30 text-red-300' : toast.type === 'info' ? 'bg-indigo-500/20 border-indigo-500/30 text-indigo-300' : 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300'}`}>
+            {toast.type === 'error' ? <AlertCircle className="w-4 h-4" /> : toast.type === 'info' ? <FileText className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
             <span className="font-semibold text-sm tracking-wide">{toast.message}</span>
           </div>
         </div>

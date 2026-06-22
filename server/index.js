@@ -10,6 +10,7 @@ const profileRoutes = require('./routes/profile');
 const roomRoutes = require('./routes/rooms');
 const executeRoutes = require('./routes/execute');
 const aiRoutes = require('./routes/ai');
+const noteRoutes = require('./routes/note');
 const { socketHandler } = require('./socket/socket');
 
 const app = express();
@@ -45,6 +46,7 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/rooms', roomRoutes);
 app.use('/api/execute', executeRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/rooms', noteRoutes);
 
 // Connect to MongoDB
 mongoose.set('bufferCommands', false);

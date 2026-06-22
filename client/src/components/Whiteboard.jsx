@@ -702,7 +702,7 @@ const Whiteboard = ({ roomId, isVisible, sharedStrokesRef, user }) => {
           }
           if (isDrawing) handleMouseUp({ nativeEvent: { offsetX: lastActualPosRef.current.x, offsetY: lastActualPosRef.current.y } });
         }}
-        className={`absolute inset-0 touch-none z-10 ${tool === 'eraser' ? 'cursor-cell' : tool === 'text' ? 'cursor-text' : 'cursor-crosshair'}`}
+        className={`absolute inset-0 z-10 ${tool === 'eraser' ? 'cursor-cell' : tool === 'text' ? 'cursor-text' : 'cursor-crosshair'}`}
       />
 
       <div className={`absolute inset-0 pointer-events-none ${showGrid ? '' : 'opacity-0'}`}>

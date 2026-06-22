@@ -774,7 +774,9 @@ const Whiteboard = ({ roomId, isVisible, sharedStrokesRef, user }) => {
 
       {/* Remote cursors overlay */}
       <div className="absolute inset-0 pointer-events-none z-20">
-        {Object.entries(remoteCursors).map(([id, cursor]) => (
+        {Object.entries(remoteCursors).map(([id, cursor]) => {
+          const avatarBg = cursor.avatarColor || '#8b5cf6';
+          return (
             <div
               key={id}
               style={{
@@ -796,7 +798,7 @@ const Whiteboard = ({ roomId, isVisible, sharedStrokesRef, user }) => {
                 border: '2px solid #fff',
                 flexShrink: 0,
                 boxShadow: '0 0 8px rgba(0,0,0,0.5)',
-                backgroundColor: cursor.avatarColor || '#8b5cf6',
+                backgroundColor: avatarBg,
               }}
             />
             <span
@@ -809,13 +811,15 @@ const Whiteboard = ({ roomId, isVisible, sharedStrokesRef, user }) => {
                 whiteSpace: 'nowrap',
                 boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
                 letterSpacing: '0.02em',
-                backgroundColor: cursor.avatarColor || '#8b5cf6',
+                backgroundColor: avatarBg,
+                border: '1px solid rgba(255,255,255,0.25)',
               }}
             >
               {cursor.fullName || cursor.username || 'User'}
             </span>
             </div>
-          ))}
+          );
+        })}
       </div>
 
       <div className="absolute top-4 left-4 z-30 flex items-center gap-2 glass-panel p-2 rounded-2xl border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex-wrap">

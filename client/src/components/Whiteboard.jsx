@@ -691,6 +691,31 @@ const Whiteboard = ({ roomId, isVisible, sharedStrokesRef, user }) => {
   return (
     <div className="relative w-full h-full bg-transparent overflow-hidden rounded-b-2xl">
       
+      <canvas
+        ref={canvasRef}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={() => {
+          if (socket && roomId) {
+            socket.emit('whiteboard-cursor-leave', { roomId, socketId: socket.id });
+          }
+          if (isDrawing) handleMouseUp({ nativeEvent: { offsetX: lastActualPosRef.current.x, offsetY: lastActualPosRef.current.y } });
+        }}
+        className={`absolute inset-0 touch-none z-10 ${tool === 'eraser' ? 'cursor-cell' : tool === 'text' ? 'cursor-text' : 'cursor-crosshair'}`}
+      />
+
+      <div className={`absolute inset-0 pointer-events-none ${showGrid ? '' : 'opacity-0'}`}>
+        <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern id="dot-grid" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
+              <circle cx="2" cy="2" r="1" fill="rgba(255,255,255,0.06)" />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#dot-grid)" />
+        </svg>
+      </div>
+
       {/* Absolute layer of Sticky Notes on top of the canvas */}
       <div className="absolute inset-0 pointer-events-none z-20">
         {notes.map((note) => {
@@ -745,6 +770,32 @@ const Whiteboard = ({ roomId, isVisible, sharedStrokesRef, user }) => {
             </div>
           );
         })}
+      </div>
+
+      {/* Remote cursors overlay */}
+      <div className="absolute inset-0 pointer-events-none z-20">
+        {Object.entries(remoteCursors).map(([id, cursor]) => (
+            <div
+              key={id}
+              className="whiteboard-cursor"
+              style={{
+                left: cursor.x,
+                top: cursor.y,
+                borderColor: cursor.avatarColor || '#8b5cf6',
+              }}
+            >
+            <span
+              className="whiteboard-cursor-dot"
+              style={{ backgroundColor: cursor.avatarColor || '#8b5cf6' }}
+            />
+            <span
+              className="whiteboard-cursor-label"
+              style={{ backgroundColor: cursor.avatarColor || '#8b5cf6' }}
+            >
+              {cursor.fullName || cursor.username || 'User'}
+            </span>
+            </div>
+          ))}
       </div>
 
       <div className="absolute top-4 left-4 z-30 flex items-center gap-2 glass-panel p-2 rounded-2xl border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex-wrap">
@@ -844,57 +895,6 @@ const Whiteboard = ({ roomId, isVisible, sharedStrokesRef, user }) => {
         >
           <Grid className="w-4 h-4" />
         </button>
-      </div>
-
-      <div className={`absolute inset-0 pointer-events-none ${showGrid ? '' : 'opacity-0'}`}>
-        <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <pattern id="dot-grid" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
-              <circle cx="2" cy="2" r="1" fill="rgba(255,255,255,0.06)" />
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#dot-grid)" />
-        </svg>
-      </div>
-
-      <canvas
-        ref={canvasRef}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={() => {
-          if (socket && roomId) {
-            socket.emit('whiteboard-cursor-leave', { roomId, socketId: socket.id });
-          }
-          if (isDrawing) handleMouseUp({ nativeEvent: { offsetX: lastActualPosRef.current.x, offsetY: lastActualPosRef.current.y } });
-        }}
-        className={`absolute inset-0 touch-none z-10 ${tool === 'eraser' ? 'cursor-cell' : tool === 'text' ? 'cursor-text' : 'cursor-crosshair'}`}
-      />
-
-      {/* Remote cursors overlay */}
-      <div className="absolute inset-0 pointer-events-none z-20">
-        {Object.entries(remoteCursors).map(([id, cursor]) => (
-            <div
-              key={id}
-              className="whiteboard-cursor"
-              style={{
-                left: cursor.x,
-                top: cursor.y,
-                borderColor: cursor.avatarColor || '#8b5cf6',
-              }}
-            >
-            <span
-              className="whiteboard-cursor-dot"
-              style={{ backgroundColor: cursor.avatarColor || '#8b5cf6' }}
-            />
-            <span
-              className="whiteboard-cursor-label"
-              style={{ backgroundColor: cursor.avatarColor || '#8b5cf6' }}
-            >
-              {cursor.fullName || cursor.username || 'User'}
-            </span>
-            </div>
-          ))}
       </div>
 
       {/* Bottom status bar */}

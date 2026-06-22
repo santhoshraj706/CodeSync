@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import NeonWireframeBackground from '../components/NeonWireframeBackground';
 import {
   Code, Users, PenTool, Sparkles, MessageSquare, Terminal, Play,
   Shield, BookOpen, GraduationCap, Monitor, Zap, ChevronRight,
@@ -266,7 +267,9 @@ const Guide = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#070a14] text-white font-sans selection:bg-indigo-500/30">
+    <div className="min-h-screen aurora-bg text-white font-sans selection:bg-indigo-500/30">
+      <NeonWireframeBackground intensity="subtle" />
+      <div className="grid-overlay"></div>
 
       {/* Sticky Navbar */}
       <nav className="sticky top-0 z-50 border-b border-white/10 px-4 sm:px-6 py-3 sm:py-4 backdrop-blur-xl bg-[#0b0e1a]/80 shadow-[0_4px_30px_rgba(0,0,0,0.3)]">
@@ -299,7 +302,7 @@ const Guide = () => {
               </div>
             </div>
             <Link to="/login" className="hover:text-white transition-colors">Log in</Link>
-            <Link to="/signup" className="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-xl font-semibold transition-all shadow-[0_0_15px_rgba(99,102,241,0.3)] hover:shadow-[0_0_20px_rgba(99,102,241,0.5)] border border-indigo-400/30">
+            <Link to="/signup" className="glow-button text-white px-4 py-2 rounded-xl font-semibold text-sm">
               Sign Up Free
             </Link>
           </div>
@@ -343,7 +346,7 @@ const Guide = () => {
                 <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="w-full text-center py-3 rounded-xl border border-white/10 text-gray-200 font-semibold hover:bg-white/5 transition-colors">
                   Log in
                 </Link>
-                <Link to="/signup" onClick={() => setMobileMenuOpen(false)} className="w-full text-center py-3 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white font-semibold transition-all shadow-[0_0_15px_rgba(99,102,241,0.3)] border border-indigo-400/30">
+                <Link to="/signup" onClick={() => setMobileMenuOpen(false)} className="w-full text-center py-3 rounded-xl glow-button text-white font-semibold">
                   Sign Up Free
                 </Link>
               </div>
@@ -371,7 +374,7 @@ const Guide = () => {
           <Link to="/signup" className="w-full sm:w-auto bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl font-bold text-sm sm:text-lg transition-all shadow-[0_0_20px_rgba(99,102,241,0.4)] hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(99,102,241,0.6)] border border-white/10 flex items-center justify-center gap-2">
             Start Coding <Zap className="w-4 h-4 sm:w-5 sm:h-5 fill-current" />
           </Link>
-          <Link to="/" className="w-full sm:w-auto glass-panel hover:bg-white/10 px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl font-bold text-sm sm:text-lg text-white transition-all border border-white/10 flex items-center justify-center gap-2">
+          <Link to="/" className="w-full sm:w-auto metallic-panel shine-hover px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl font-bold text-sm sm:text-lg text-white transition-all border border-white/10 flex items-center justify-center gap-2">
             Back to Home <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
           </Link>
         </div>
@@ -386,7 +389,7 @@ const Guide = () => {
               <button
                 key={s.id}
                 onClick={() => scrollToSection(s.id)}
-                className="glass-panel p-4 sm:p-5 rounded-2xl border border-white/10 hover:border-indigo-500/30 transition-all duration-300 hover:-translate-y-0.5 text-center group"
+                className="metallic-card p-4 sm:p-5 rounded-2xl text-center"
               >
                 <div className={`w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br ${s.color} rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform duration-300`}>
                   <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
@@ -422,7 +425,7 @@ const Guide = () => {
 
                 {/* Content card */}
                 <div className="flex-1 min-w-0">
-                  <div className="glass-panel rounded-2xl sm:rounded-3xl border border-white/10 overflow-hidden">
+                  <div className="metallic-panel rounded-2xl sm:rounded-3xl border border-white/10 overflow-hidden">
                     <div className={`h-1 w-full bg-gradient-to-r ${section.color}`} />
                     <div className="p-5 sm:p-8">
                       {/* Mobile icon + title row */}
@@ -512,7 +515,7 @@ const Guide = () => {
             { step: '08', icon: Sparkles, label: 'Use AI assistant', desc: 'Get help with explanations and fixes.' },
             { step: '09', icon: Download, label: 'Export everything', desc: 'Save notes, chat, and code as files.' },
           ].map(({ step, icon: Icon, label, desc }) => (
-            <div key={step} className="glass-panel p-4 sm:p-5 rounded-2xl border border-white/10 hover:border-indigo-500/30 transition-all duration-300 hover:-translate-y-0.5 group">
+            <div key={step} className="metallic-card p-4 sm:p-5 rounded-2xl">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/25 flex items-center justify-center text-xs font-bold text-indigo-300 group-hover:scale-110 transition-transform">
                   {step}
@@ -541,7 +544,7 @@ const Guide = () => {
             { icon: GraduationCap, label: 'Classroom Demos', desc: 'Teachers can present code, share whiteboard diagrams, and interact with students in real-time.' },
             { icon: Lightbulb, label: 'Algorithm Sessions', desc: 'Visualize algorithms on the whiteboard while coding and testing them side by side.' },
           ].map(({ icon: Icon, label, desc }) => (
-            <div key={label} className="glass-panel p-5 sm:p-6 rounded-2xl sm:rounded-3xl border border-white/10 hover:border-indigo-500/30 transition-all duration-300 hover:-translate-y-0.5 group">
+            <div key={label} className="metallic-card p-5 sm:p-6 rounded-2xl sm:rounded-3xl">
               <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/25 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                 <Icon className="w-5 h-5 text-indigo-400" />
               </div>
@@ -560,7 +563,7 @@ const Guide = () => {
         </div>
         <div className="space-y-3">
           {FAQ_DATA.map(({ q, a }, i) => (
-            <div key={i} className="glass-panel rounded-2xl border border-white/10 overflow-hidden transition-all duration-300">
+            <div key={i} className="metallic-panel rounded-2xl border border-white/10 overflow-hidden transition-all duration-300">
               <button
                 onClick={() => setOpenFaq(openFaq === i ? null : i)}
                 className="w-full flex items-center justify-between gap-3 px-5 sm:px-6 py-4 sm:py-5 text-left transition-colors hover:bg-white/[0.02]"
@@ -580,7 +583,7 @@ const Guide = () => {
 
       {/* Final CTA */}
       <section data-reveal className="max-w-4xl mx-auto px-4 sm:px-6 pb-16 sm:pb-24">
-        <div className="glass-panel rounded-3xl sm:rounded-[2.5rem] border border-white/10 overflow-hidden relative">
+        <div className="metallic-panel rounded-3xl sm:rounded-[2.5rem] border border-white/10 overflow-hidden relative">
           <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-emerald-500/10 pointer-events-none"></div>
           <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-indigo-400/50 to-transparent"></div>
           <div className="relative p-8 sm:p-12 md:p-16 text-center">
@@ -593,7 +596,7 @@ const Guide = () => {
               <Link to="/signup" className="w-full sm:w-auto bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl font-bold text-sm sm:text-lg transition-all shadow-[0_0_20px_rgba(99,102,241,0.4)] hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(99,102,241,0.6)] border border-white/10 flex items-center justify-center gap-2">
                 Get Started <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
               </Link>
-              <Link to="/login" className="w-full sm:w-auto glass-panel hover:bg-white/10 px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl font-bold text-sm sm:text-lg text-white transition-all border border-white/10 flex items-center justify-center gap-2">
+              <Link to="/login" className="w-full sm:w-auto metallic-panel shine-hover px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl font-bold text-sm sm:text-lg text-white transition-all border border-white/10 flex items-center justify-center gap-2">
                 Login to Workspace
               </Link>
             </div>
@@ -602,7 +605,7 @@ const Guide = () => {
       </section>
 
       {/* Footer */}
-      <footer className="glass-panel border-t border-white/10">
+      <footer className="metallic-panel border-t border-white/10">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
           <div className="flex flex-col md:flex-row items-center justify-between gap-5 sm:gap-6">
             <div className="flex items-center gap-3">

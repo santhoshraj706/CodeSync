@@ -14,6 +14,13 @@ const socketHandler = (io) => {
     let currentUsername = 'A user';
 
     socket.on('join-room', async ({ roomId, username, fullName: fn, collegeName: cn, experienceLevel: el, avatarColor: ac }) => {
+      // Validate room exists before allowing join
+      const roomExists = await Room.findOne({ roomId }).select('_id');
+      if (!roomExists) {
+        socket.emit('room-join-error', { message: 'Room not found' });
+        return;
+      }
+
       currentRoomId = roomId;
       currentUsername = username;
       socket.join(roomId);

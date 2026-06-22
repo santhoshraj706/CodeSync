@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import NeonWireframeBackground from '../components/NeonWireframeBackground';
 import {
   Code, Users, PenTool, Zap, Terminal, Globe, Shield, Sparkles,
   MessageSquare, ChevronRight, GitBranch, ExternalLink, Play,
@@ -149,7 +150,40 @@ const Landing = () => {
   };
 
   return (
-    <div className="min-h-screen bg-animated-gradient text-white font-sans selection:bg-indigo-500/30">
+    <div className="min-h-screen aurora-bg cinematic-bg-only text-white font-sans selection:bg-indigo-500/30">
+      <NeonWireframeBackground intensity="full" />
+      <div className="grid-overlay"></div>
+      <div className="bg-orb-1"></div>
+      <div className="bg-orb-2"></div>
+      <div className="bg-orb-3"></div>
+      <div className="bg-ring"></div>
+      <div className="bg-spotlight"></div>
+      <div className="bg-light-sweep" style={{ top: '35%', left: '-10%' }}></div>
+      <div className="bg-3d-cube" style={{ top: '10%', right: '5%' }}>
+        <div className="bg-3d-cube-inner">
+          <div className="bg-3d-cube-face bg-3d-cube-front"></div>
+          <div className="bg-3d-cube-face bg-3d-cube-back"></div>
+          <div className="bg-3d-cube-face bg-3d-cube-right"></div>
+          <div className="bg-3d-cube-face bg-3d-cube-left"></div>
+          <div className="bg-3d-cube-face bg-3d-cube-top"></div>
+          <div className="bg-3d-cube-face bg-3d-cube-bottom"></div>
+        </div>
+      </div>
+      <div className="bg-3d-cube" style={{ top: '55%', left: '3%', width: '140px', height: '140px' }}>
+        <div className="bg-3d-cube-inner" style={{ animationDuration: '35s' }}>
+          <div className="bg-3d-cube-face" style={{ width: '140px', height: '140px', transform: 'rotateY(0deg) translateZ(70px)' }}></div>
+          <div className="bg-3d-cube-face" style={{ width: '140px', height: '140px', transform: 'rotateX(180deg) translateZ(70px)' }}></div>
+          <div className="bg-3d-cube-face" style={{ width: '140px', height: '140px', transform: 'rotateY(90deg) translateZ(70px)' }}></div>
+          <div className="bg-3d-cube-face" style={{ width: '140px', height: '140px', transform: 'rotateY(-90deg) translateZ(70px)' }}></div>
+          <div className="bg-3d-cube-face" style={{ width: '140px', height: '140px', transform: 'rotateX(90deg) translateZ(70px)' }}></div>
+          <div className="bg-3d-cube-face" style={{ width: '140px', height: '140px', transform: 'rotateX(-90deg) translateZ(70px)' }}></div>
+        </div>
+      </div>
+      <div className="bg-3d-diamond bg-3d-diamond-1" style={{ top: '5%', left: '10%' }}></div>
+      <div className="bg-3d-diamond bg-3d-diamond-2" style={{ bottom: '10%', right: '15%' }}></div>
+      <div className="bg-3d-diamond bg-3d-diamond-3" style={{ top: '40%', left: '50%' }}></div>
+      <div className="bg-3d-triangle bg-3d-triangle-1" style={{ bottom: '20%', left: '8%' }}></div>
+      <div className="bg-3d-triangle bg-3d-triangle-2" style={{ top: '25%', right: '12%' }}></div>
 
       {/* Navigation Bar */}
       <nav className="sticky top-0 z-50 border-b border-white/10 px-4 sm:px-6 py-3 sm:py-4 backdrop-blur-xl bg-[#0b0e1a]/80 shadow-[0_4px_30px_rgba(0,0,0,0.3)]">
@@ -168,7 +202,7 @@ const Landing = () => {
             <Link to="/guide" className="hover:text-white transition-colors">Guide</Link>
             <button onClick={() => document.getElementById('faq')?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-white transition-colors">FAQ</button>
             <Link to="/login" className="hover:text-white transition-colors">Log in</Link>
-            <Link to="/signup" className="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-xl font-semibold transition-all shadow-[0_0_15px_rgba(99,102,241,0.3)] hover:shadow-[0_0_20px_rgba(99,102,241,0.5)] border border-indigo-400/30">
+            <Link to="/signup" className="glow-button text-white px-4 py-2 rounded-xl font-semibold text-sm">
               Sign Up Free
             </Link>
           </div>
@@ -209,7 +243,7 @@ const Landing = () => {
                 <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="w-full text-center py-3 rounded-xl border border-white/10 text-gray-200 font-semibold hover:bg-white/5 transition-colors">
                   Log in
                 </Link>
-                <Link to="/signup" onClick={() => setMobileMenuOpen(false)} className="w-full text-center py-3 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white font-semibold transition-all shadow-[0_0_15px_rgba(99,102,241,0.3)] border border-indigo-400/30">
+                <Link to="/signup" onClick={() => setMobileMenuOpen(false)} className="w-full text-center py-3 rounded-xl glow-button text-white font-semibold">
                   Sign Up Free
                 </Link>
               </div>
@@ -240,7 +274,7 @@ const Landing = () => {
           <Link to="/signup" className="w-full sm:w-auto bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl font-bold text-sm sm:text-lg transition-all shadow-[0_0_20px_rgba(99,102,241,0.4)] hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(99,102,241,0.6)] border border-white/10 flex items-center justify-center gap-2">
             Get Started <Zap className="w-4 h-4 sm:w-5 sm:h-5 fill-current" />
           </Link>
-          <Link to="/login" className="w-full sm:w-auto glass-panel hover:bg-white/10 px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl font-bold text-sm sm:text-lg text-white transition-all border border-white/10 flex items-center justify-center gap-2">
+          <Link to="/login" className="w-full sm:w-auto metallic-panel shine-hover px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl font-bold text-sm sm:text-lg text-white transition-all border border-white/10 flex items-center justify-center gap-2">
             Login to Workspace
           </Link>
         </div>
@@ -264,7 +298,7 @@ const Landing = () => {
 
       {/* Product Preview Mockup */}
       <section className="max-w-5xl mx-auto px-4 sm:px-6 mb-12 sm:mb-16 animate-fadeIn animate-delay-300">
-        <div className="glass-panel rounded-2xl sm:rounded-3xl border border-white/10 overflow-hidden shadow-2xl relative">
+        <div className="metallic-panel rounded-2xl sm:rounded-3xl border border-white/10 overflow-hidden shadow-2xl relative">
           <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-emerald-500/5 pointer-events-none"></div>
 
           {/* Mockup Tabs */}
@@ -342,7 +376,7 @@ const Landing = () => {
           ].map(({ icon: Icon, label, desc, border, iconbg, iconcolor, glow }) => (
             <div
               key={label}
-              className={`group glass-panel p-5 sm:p-6 md:p-8 rounded-2xl sm:rounded-3xl transition-all duration-300 border border-white/10 ${border} hover:-translate-y-1 hover:shadow-lg ${glow} relative overflow-hidden`}
+               className={`group metallic-card p-5 sm:p-6 md:p-8 rounded-2xl sm:rounded-3xl ${border}`}
             >
               <div className={`absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none`}></div>
               <div className={`absolute -top-10 -right-10 w-20 h-20 rounded-full blur-2xl opacity-0 group-hover:opacity-20 transition-opacity duration-300 pointer-events-none ${iconbg}`}></div>
@@ -370,7 +404,7 @@ const Landing = () => {
             { step: '03', icon: Layout, label: 'Code, discuss, draw, run', desc: 'Edit code together, chat in real-time, sketch ideas, and execute code without leaving the browser.' },
           ].map(({ step, icon: Icon, label, desc }) => (
             <div key={step} className="relative group">
-              <div className="glass-panel p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/10 relative overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:border-indigo-500/30">
+              <div className="metallic-card p-6 sm:p-8 rounded-2xl sm:rounded-3xl">
                 <div className="absolute -top-6 -right-6 text-6xl sm:text-7xl font-black text-white/[0.03] select-none pointer-events-none">{step}</div>
                 <div className="w-14 h-14 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-2xl flex items-center justify-center border border-indigo-500/25 mb-5 group-hover:scale-110 transition-transform duration-300">
                   <Icon className="w-7 h-7 text-indigo-300" />
@@ -397,7 +431,7 @@ const Landing = () => {
 
         <div className="space-y-3">
           {FAQ_DATA.map(({ q, a }, i) => (
-            <div key={i} className="glass-panel rounded-2xl border border-white/10 overflow-hidden transition-all duration-300">
+            <div key={i} className="metallic-panel rounded-2xl border border-white/10 overflow-hidden transition-all duration-300">
               <button
                 onClick={() => setOpenFaq(openFaq === i ? null : i)}
                 className="w-full flex items-center justify-between gap-3 px-5 sm:px-6 py-4 sm:py-5 text-left transition-colors hover:bg-white/[0.02]"
@@ -417,7 +451,7 @@ const Landing = () => {
 
       {/* Final CTA */}
       <section data-reveal className="max-w-4xl mx-auto px-4 sm:px-6 pb-16 sm:pb-24">
-        <div className="glass-panel rounded-3xl sm:rounded-[2.5rem] border border-white/10 overflow-hidden relative">
+        <div className="metallic-panel rounded-3xl sm:rounded-[2.5rem] border border-white/10 overflow-hidden relative">
           <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-emerald-500/10 pointer-events-none"></div>
           <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-indigo-400/50 to-transparent"></div>
           <div className="relative p-8 sm:p-12 md:p-16 text-center">
@@ -430,7 +464,7 @@ const Landing = () => {
               <Link to="/signup" className="w-full sm:w-auto bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl font-bold text-sm sm:text-lg transition-all shadow-[0_0_20px_rgba(99,102,241,0.4)] hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(99,102,241,0.6)] border border-white/10 flex items-center justify-center gap-2">
                 Get Started <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
               </Link>
-              <Link to="/login" className="w-full sm:w-auto glass-panel hover:bg-white/10 px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl font-bold text-sm sm:text-lg text-white transition-all border border-white/10 flex items-center justify-center gap-2">
+              <Link to="/login" className="w-full sm:w-auto metallic-panel shine-hover px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl font-bold text-sm sm:text-lg text-white transition-all border border-white/10 flex items-center justify-center gap-2">
                 Login to Workspace
               </Link>
             </div>
@@ -439,7 +473,7 @@ const Landing = () => {
       </section>
 
       {/* Footer */}
-      <footer className="glass-panel border-t border-white/10">
+      <footer className="metallic-panel border-t border-white/10">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
           <div className="flex flex-col md:flex-row items-center justify-between gap-5 sm:gap-6">
             <div className="flex items-center gap-3">

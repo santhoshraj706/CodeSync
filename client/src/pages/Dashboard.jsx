@@ -1,7 +1,9 @@
 import { useState, useEffect, useContext, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import api from '../utils/api';
+import TowerLoader from '../components/TowerLoader';
+import NeonWireframeBackground from '../components/NeonWireframeBackground';
 import {
   LogOut,
   Plus,
@@ -71,6 +73,7 @@ const Dashboard = () => {
   const activityIdRef = useRef(0);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const toastTimeoutRef = useRef(null);
 
@@ -106,6 +109,14 @@ const Dashboard = () => {
     const savedFavorites = localStorage.getItem('favoriteRooms');
     if (savedFavorites) {
       setFavoriteRooms(JSON.parse(savedFavorites));
+    }
+  }, []);
+
+  useEffect(() => {
+    const errorMsg = searchParams.get('error');
+    if (errorMsg) {
+      showToast(errorMsg, 'error');
+      window.history.replaceState({}, document.title, '/dashboard');
     }
   }, []);
 
@@ -251,14 +262,33 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-animated-gradient text-white p-3 md:p-6 lg:p-8 font-sans relative overflow-x-hidden">
-      <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none animate-blob"></div>
-      <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-emerald-600/10 rounded-full blur-[120px] pointer-events-none animate-blob" style={{ animationDelay: '2s' }}></div>
+    <div className="min-h-screen aurora-bg cinematic-bg-only text-white p-3 md:p-6 lg:p-8 font-sans relative overflow-x-hidden">
+      <NeonWireframeBackground intensity="subtle" />
+      <div className="grid-overlay"></div>
+      <div className="bg-orb-1"></div>
+      <div className="bg-orb-2"></div>
+      <div className="bg-orb-3"></div>
+      <div className="bg-ring"></div>
+      <div className="bg-spotlight"></div>
+      <div className="bg-light-sweep" style={{ top: '30%', left: '-15%' }}></div>
+      <div className="bg-3d-cube" style={{ top: '8%', left: '60%' }}>
+        <div className="bg-3d-cube-inner">
+          <div className="bg-3d-cube-face bg-3d-cube-front"></div>
+          <div className="bg-3d-cube-face bg-3d-cube-back"></div>
+          <div className="bg-3d-cube-face bg-3d-cube-right"></div>
+          <div className="bg-3d-cube-face bg-3d-cube-left"></div>
+          <div className="bg-3d-cube-face bg-3d-cube-top"></div>
+          <div className="bg-3d-cube-face bg-3d-cube-bottom"></div>
+        </div>
+      </div>
+      <div className="bg-3d-diamond bg-3d-diamond-2" style={{ bottom: '5%', left: '5%' }}></div>
+      <div className="bg-3d-diamond bg-3d-diamond-3" style={{ top: '50%', right: '3%' }}></div>
+      <div className="bg-3d-triangle bg-3d-triangle-1" style={{ top: '15%', left: '80%' }}></div>
 
       <div className="max-w-6xl mx-auto space-y-5 relative z-10">
 
         {/* ── Header ── */}
-        <div className="glass-panel p-5 sm:p-6 rounded-2xl flex flex-col sm:flex-row justify-between items-center animate-fadeIn shadow-[0_15px_40px_rgba(0,0,0,0.4)] border-white/10 relative overflow-hidden">
+        <div className="metallic-panel p-5 sm:p-6 rounded-2xl flex flex-col sm:flex-row justify-between items-center animate-fadeIn shadow-[0_15px_40px_rgba(0,0,0,0.4)] border-white/10 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-purple-500/5 pointer-events-none"></div>
           <div className="flex items-center gap-4 mb-4 sm:mb-0 relative z-10">
             <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-xl flex items-center justify-center border border-indigo-500/30 shadow-[0_0_25px_rgba(99,102,241,0.25)]">
@@ -266,7 +296,7 @@ const Dashboard = () => {
             </div>
             <div>
               <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-indigo-100 to-indigo-200">
-                Welcome back, {user?.username}
+                Welcome back, {user?.fullName || user?.username}
               </h1>
               <p className="text-xs sm:text-sm text-slate-400 mt-0.5 font-medium flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
@@ -293,21 +323,12 @@ const Dashboard = () => {
         {/* ── Stats Row ── */}
         <div className="grid grid-cols-3 gap-3 animate-fadeIn animate-delay-100">
           {isLoadingRooms ? (
-            <>
-              {[1, 2, 3].map(n => (
-                <div key={n} className="glass-panel-light p-4 rounded-xl border-white/10 animate-pulse">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="w-16 h-2.5 bg-slate-700/50 rounded"></div>
-                    <div className="w-7 h-7 rounded-lg bg-slate-700/50"></div>
-                  </div>
-                  <div className="w-12 h-6 bg-slate-700/50 rounded mb-1.5"></div>
-                  <div className="w-20 h-2.5 bg-slate-700/30 rounded"></div>
-                </div>
-              ))}
-            </>
+            <div className="col-span-3">
+              <TowerLoader text="Loading workspaces..." />
+            </div>
           ) : (
             <>
-              <div className="glass-panel-light p-4 rounded-xl border-white/10 relative overflow-hidden group hover:border-indigo-500/30 transition-all duration-300">
+              <div className="metallic-card p-4 rounded-xl border-white/10 relative overflow-hidden group hover:border-indigo-500/30 transition-all duration-300">
                 <div className="absolute -top-4 -right-4 w-14 h-14 bg-indigo-500/10 rounded-full blur-xl group-hover:bg-indigo-500/20 transition-colors"></div>
                 <div className="flex items-center justify-between mb-2 relative">
                   <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Workspaces</span>
@@ -318,7 +339,7 @@ const Dashboard = () => {
                 <div className="text-2xl font-black text-white relative">{recentRooms.length}</div>
                 <p className="text-[10px] text-slate-500 mt-0.5 relative">Recent rooms</p>
               </div>
-              <div className="glass-panel-light p-4 rounded-xl border-white/10 relative overflow-hidden group hover:border-emerald-500/30 transition-all duration-300">
+              <div className="metallic-card p-4 rounded-xl border-white/10 relative overflow-hidden group hover:border-emerald-500/30 transition-all duration-300">
                 <div className="absolute -top-4 -right-4 w-14 h-14 bg-emerald-500/10 rounded-full blur-xl group-hover:bg-emerald-500/20 transition-colors"></div>
                 <div className="flex items-center justify-between mb-2 relative">
                   <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Admin</span>
@@ -329,7 +350,7 @@ const Dashboard = () => {
                 <div className="text-2xl font-black text-white relative">{adminRooms}</div>
                 <p className="text-[10px] text-slate-500 mt-0.5 relative">You manage</p>
               </div>
-              <div className="glass-panel-light p-4 rounded-xl border-white/10 relative overflow-hidden group hover:border-cyan-500/30 transition-all duration-300">
+              <div className="metallic-card p-4 rounded-xl border-white/10 relative overflow-hidden group hover:border-cyan-500/30 transition-all duration-300">
                 <div className="absolute -top-4 -right-4 w-14 h-14 bg-cyan-500/10 rounded-full blur-xl group-hover:bg-cyan-500/20 transition-colors"></div>
                 <div className="flex items-center justify-between mb-2 relative">
                   <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Latest</span>
@@ -353,7 +374,7 @@ const Dashboard = () => {
           <div className="lg:col-span-3 flex flex-col gap-4">
 
             {/* Create / Join Form */}
-            <div className="glass-panel p-5 sm:p-6 rounded-2xl relative overflow-hidden">
+            <div className="metallic-panel p-5 sm:p-6 rounded-2xl relative overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/3 via-transparent to-emerald-500/3 pointer-events-none"></div>
 
               {/* Segmented tabs */}
@@ -402,7 +423,7 @@ const Dashboard = () => {
                           name="workspaceIdInputCreate"
                           autoComplete="off"
                           placeholder="e.g. project-x"
-                          className="w-full p-3.5 rounded-xl glass-input font-medium placeholder-slate-500 text-sm"
+                          className="w-full p-3.5 rounded-xl glow-input font-medium placeholder-slate-500 text-sm"
                           value={roomId}
                           onChange={(e) => setRoomId(e.target.value)}
                         />
@@ -425,7 +446,7 @@ const Dashboard = () => {
                           name="workspaceAccessCodeCreate"
                           autoComplete="new-password"
                           placeholder="Set a room access code"
-                          className="w-full p-3.5 pr-11 rounded-xl glass-input font-medium placeholder-slate-500 text-sm"
+                          className="w-full p-3.5 pr-11 rounded-xl glow-input font-medium placeholder-slate-500 text-sm"
                           value={roomPassword}
                           onChange={(e) => setRoomPassword(e.target.value)}
                         />
@@ -439,7 +460,7 @@ const Dashboard = () => {
                         </button>
                       </div>
                     </div>
-                    <button type="submit" className="w-full glass-button p-3.5 rounded-xl font-bold text-sm tracking-wide mt-2 group/btn flex items-center justify-center gap-2">
+                    <button type="submit" className="w-full glow-button p-3.5 rounded-xl font-bold text-sm tracking-wide mt-2 group/btn flex items-center justify-center gap-2">
                       Create Workspace <Plus className="w-4 h-4 group-hover/btn:rotate-90 transition-transform duration-300" />
                     </button>
                   </form>
@@ -456,7 +477,7 @@ const Dashboard = () => {
                         name="workspaceIdInputJoin"
                         autoComplete="off"
                         placeholder="Enter the workspace ID to join"
-                        className="w-full p-3.5 rounded-xl glass-input font-medium placeholder-slate-500 text-sm focus:border-emerald-500/60 focus:shadow-[0_0_15px_rgba(16,185,129,0.3)]"
+                        className="w-full p-3.5 rounded-xl glow-input font-medium placeholder-slate-500 text-sm focus:border-emerald-500/60 focus:shadow-[0_0_15px_rgba(16,185,129,0.3)]"
                         value={roomId}
                         onChange={(e) => setRoomId(e.target.value)}
                       />
@@ -469,7 +490,7 @@ const Dashboard = () => {
                           name="workspaceAccessCodeJoin"
                           autoComplete="new-password"
                           placeholder="Enter room access code"
-                          className="w-full p-3.5 pr-11 rounded-xl glass-input font-medium placeholder-slate-500 text-sm focus:border-emerald-500/60 focus:shadow-[0_0_15px_rgba(16,185,129,0.3)]"
+                          className="w-full p-3.5 pr-11 rounded-xl glow-input font-medium placeholder-slate-500 text-sm focus:border-emerald-500/60 focus:shadow-[0_0_15px_rgba(16,185,129,0.3)]"
                           value={roomPassword}
                           onChange={(e) => setRoomPassword(e.target.value)}
                         />
@@ -492,7 +513,7 @@ const Dashboard = () => {
             </div>
 
             {/* ══ Recent Workspaces (inside left column) ══ */}
-            <div className="glass-panel p-5 sm:p-6 rounded-2xl relative overflow-hidden">
+            <div className="metallic-panel p-5 sm:p-6 rounded-2xl relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent pointer-events-none"></div>
 
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
@@ -528,7 +549,7 @@ const Dashboard = () => {
                       value={roomSearch}
                       onChange={(e) => setRoomSearch(e.target.value)}
                       placeholder="Search..."
-                      className="w-full pl-8 pr-3 py-2 rounded-lg glass-input text-xs placeholder-slate-500"
+                      className="w-full pl-8 pr-3 py-2 rounded-lg glow-input text-xs placeholder-slate-500"
                     />
                     {roomSearch && (
                       <button
@@ -543,25 +564,7 @@ const Dashboard = () => {
               </div>
 
               {isLoadingRooms ? (
-                <div className="grid md:grid-cols-2 gap-3">
-                  {[1, 2, 3, 4].map((n) => (
-                    <div key={n} className="glass-panel-light p-4 rounded-xl border-white/5 animate-pulse">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-lg bg-slate-700/50"></div>
-                          <div className="space-y-1.5">
-                            <div className="w-28 h-3.5 bg-slate-700/50 rounded"></div>
-                            <div className="w-20 h-2.5 bg-slate-700/30 rounded"></div>
-                          </div>
-                        </div>
-                        <div className="flex gap-1">
-                          <div className="w-8 h-8 rounded-lg bg-slate-700/50"></div>
-                          <div className="w-8 h-8 rounded-lg bg-slate-700/50"></div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <TowerLoader text="Loading workspaces..." />
               ) : loadError ? (
                 <div className="text-center py-12 bg-slate-800/20 rounded-xl border border-dashed border-red-500/20">
                   <AlertCircle className="w-10 h-10 text-red-400 mx-auto mb-3" />
@@ -606,7 +609,7 @@ const Dashboard = () => {
                     <div
                       key={room._id}
                       onClick={() => { logActivity('opened', room.roomId); navigate(`/room/${room.roomId}`); }}
-                      className="glass-panel-light p-4 rounded-xl flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2.5 hover:bg-slate-700/30 transition-all duration-300 border-white/5 hover:border-indigo-500/30 hover:shadow-[0_0_25px_rgba(99,102,241,0.15)] group animate-fadeIn cursor-pointer relative overflow-hidden"
+                      className="metallic-card p-4 rounded-xl flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2.5 hover:bg-slate-700/30 transition-all duration-300 border-white/5 hover:border-indigo-500/30 hover:shadow-[0_0_25px_rgba(99,102,241,0.15)] group animate-fadeIn cursor-pointer relative overflow-hidden"
                       style={{ animationDelay: `${idx * 60}ms` }}
                     >
                       <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b from-indigo-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
@@ -683,7 +686,7 @@ const Dashboard = () => {
           <div className="lg:col-span-2 flex flex-col gap-4">
 
             {/* Quick Actions */}
-            <div className="glass-panel-light p-4 rounded-xl border-white/10">
+            <div className="metallic-card p-4 rounded-xl border-white/10">
               <h3 className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-3 flex items-center gap-1.5">
                 <Zap className="w-3 h-3 text-amber-400" /> Quick Actions
               </h3>
@@ -730,7 +733,7 @@ const Dashboard = () => {
             </div>
 
             {/* Templates */}
-            <div className="glass-panel-light p-4 rounded-xl border-white/10">
+            <div className="metallic-card p-4 rounded-xl border-white/10">
               <h3 className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-3 flex items-center gap-1.5">
                 <Layers className="w-3 h-3 text-indigo-400" /> Templates
               </h3>
@@ -762,7 +765,7 @@ const Dashboard = () => {
             </div>
 
             {/* Latest Activity */}
-            <div className="glass-panel-light p-4 rounded-xl border-white/10">
+            <div className="metallic-card p-4 rounded-xl border-white/10">
               <h3 className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-3 flex items-center gap-1.5">
                 <Clock className="w-3 h-3 text-slate-400" /> Latest Activity
               </h3>
@@ -797,7 +800,7 @@ const Dashboard = () => {
       {/* Delete Confirmation Modal */}
       {confirmDelete && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-md animate-fadeIn px-4">
-          <div className="bg-slate-900 border border-red-500/20 p-6 rounded-2xl shadow-2xl max-w-md w-full relative">
+          <div className="metallic-panel border-red-500/20 p-6 rounded-2xl shadow-2xl max-w-md w-full">
             <div className="w-12 h-12 mx-auto mb-4 rounded-2xl bg-red-500/15 border border-red-500/25 flex items-center justify-center">
               <AlertCircle className="w-6 h-6 text-red-400" />
             </div>

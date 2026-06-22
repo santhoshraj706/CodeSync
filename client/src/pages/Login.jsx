@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import api from '../utils/api';
 import { LogIn, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import NeonWireframeBackground from '../components/NeonWireframeBackground';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -25,12 +26,32 @@ const Login = () => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-animated-gradient relative">
-      {/* Decorative background elements */}
+    <div className="flex items-center justify-center min-h-screen aurora-bg cinematic-bg-only relative">
+      <NeonWireframeBackground intensity="soft" />
+      <div className="grid-overlay"></div>
+      <div className="bg-orb-1"></div>
+      <div className="bg-orb-2"></div>
+      <div className="bg-orb-3"></div>
+      <div className="bg-ring"></div>
+      <div className="bg-spotlight"></div>
+      <div className="bg-light-sweep" style={{ top: '25%', left: '-20%' }}></div>
+      <div className="bg-3d-cube" style={{ top: '15%', right: '8%' }}>
+        <div className="bg-3d-cube-inner">
+          <div className="bg-3d-cube-face bg-3d-cube-front"></div>
+          <div className="bg-3d-cube-face bg-3d-cube-back"></div>
+          <div className="bg-3d-cube-face bg-3d-cube-right"></div>
+          <div className="bg-3d-cube-face bg-3d-cube-left"></div>
+          <div className="bg-3d-cube-face bg-3d-cube-top"></div>
+          <div className="bg-3d-cube-face bg-3d-cube-bottom"></div>
+        </div>
+      </div>
+      <div className="bg-3d-diamond bg-3d-diamond-2" style={{ bottom: '15%', left: '10%' }}></div>
+      <div className="bg-3d-diamond bg-3d-diamond-3" style={{ top: '50%', right: '20%' }}></div>
+      <div className="bg-3d-triangle bg-3d-triangle-1" style={{ bottom: '30%', right: '5%' }}></div>
       <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-indigo-500/20 rounded-full blur-[100px] pointer-events-none animate-blob"></div>
       <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-purple-600/20 rounded-full blur-[120px] pointer-events-none animate-blob" style={{ animationDelay: '3s' }}></div>
 
-      <div className="p-10 sm:p-12 glass-panel rounded-[2rem] w-full max-w-[440px] mx-4 animate-fadeIn shadow-[0_0_40px_rgba(0,0,0,0.5)] border border-white/10">
+      <div className="p-10 sm:p-12 metallic-panel rounded-[2rem] w-full max-w-[440px] mx-4 animate-fadeIn shadow-[0_0_60px_rgba(0,0,0,0.5)]">
         <div className="flex flex-col items-center mb-10">
           <div className="w-20 h-20 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-2xl flex items-center justify-center mb-6 border border-indigo-500/30 shadow-[0_0_30px_rgba(99,102,241,0.3)] backdrop-blur-md relative overflow-hidden group">
             <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
@@ -52,7 +73,7 @@ const Login = () => {
             <label className="block text-slate-300 text-xs font-bold uppercase tracking-wider mb-2 ml-1 opacity-80 group-focus-within:text-indigo-400 group-focus-within:opacity-100 transition-colors">Email Address</label>
             <input
               type="email"
-              className="w-full p-4 rounded-xl glass-input text-white font-medium placeholder-slate-500"
+              className="w-full p-4 rounded-xl glow-input text-white font-medium placeholder-slate-500"
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -64,7 +85,7 @@ const Login = () => {
             <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}
-                className="w-full p-4 pr-12 rounded-xl glass-input text-white font-medium placeholder-slate-500"
+                className="w-full p-4 pr-12 rounded-xl glow-input text-white font-medium placeholder-slate-500"
                 placeholder="Enter your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -83,7 +104,7 @@ const Login = () => {
           <div className="animate-fadeIn animate-delay-300 pt-4">
             <button
               type="submit"
-              className="w-full text-white font-bold p-4 rounded-xl glass-button text-lg tracking-wide flex items-center justify-center gap-2 group"
+              className="w-full text-white font-bold p-4 rounded-xl glow-button text-lg tracking-wide flex items-center justify-center gap-2 group"
             >
               Sign In <LogIn className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </button>

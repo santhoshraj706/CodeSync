@@ -2,6 +2,7 @@ import React, { useContext } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, AuthContext } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
+import TowerLoader from './components/TowerLoader';
 import Landing from './pages/Landing';
 import Guide from './pages/Guide';
 import Login from './pages/Login';
@@ -13,14 +14,14 @@ import NotFound from './pages/NotFound';
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useContext(AuthContext);
-  if (loading) return <div className="h-screen bg-gray-900 flex items-center justify-center text-white">Loading...</div>;
+  if (loading) return <TowerLoader fullScreen text="Loading CodeSync..." />;
   if (!user) return <Navigate to="/login" />;
   return children;
 };
 
 const PublicRoute = ({ children }) => {
   const { user, loading } = useContext(AuthContext);
-  if (loading) return <div className="h-screen bg-gray-900 flex items-center justify-center text-white">Loading...</div>;
+  if (loading) return <TowerLoader fullScreen text="Loading CodeSync..." />;
   if (user) return <Navigate to="/dashboard" />;
   return children;
 };

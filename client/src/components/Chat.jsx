@@ -200,7 +200,7 @@ const Chat = ({ roomId, messages = [], setMessages, onMessagesUpdate, onClosePan
   });
 
   return (
-    <div className="flex flex-col h-full bg-slate-950/40 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl relative">
+    <div className="flex flex-col h-full metallic-panel rounded-2xl overflow-hidden">
       {/* Header */}
       <div className="px-5 py-4 border-b border-white/[0.07] bg-gradient-to-r from-indigo-500/[0.08] via-purple-500/[0.04] to-transparent flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
@@ -267,7 +267,7 @@ const Chat = ({ roomId, messages = [], setMessages, onMessagesUpdate, onClosePan
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search messages..."
-            className="w-full rounded-xl bg-white/5 border border-white/10 focus:border-indigo-500/40 py-2 pl-9 pr-3 text-xs text-white placeholder-slate-500 outline-none focus:ring-1 focus:ring-indigo-500/30 transition-all"
+            className="w-full glow-input rounded-xl py-2 pl-9 pr-3 text-xs"
           />
         </div>
       </div>
@@ -490,7 +490,7 @@ const Chat = ({ roomId, messages = [], setMessages, onMessagesUpdate, onClosePan
           </button>
           <input
             type="text"
-            className="flex-1 bg-white/5 focus:bg-white/10 border border-white/10 focus:border-indigo-500/40 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-400 focus:outline-none transition-all duration-300 focus:ring-1 focus:ring-indigo-500/30"
+            className="flex-1 glow-input rounded-xl px-4 py-3 text-sm"
             placeholder="Send a message to team..."
             value={message}
             onChange={(e) => setMessage(e.target.value)}

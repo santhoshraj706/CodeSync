@@ -9,6 +9,7 @@ import OutputWindow from '../components/OutputWindow';
 import TestRunner from '../components/TestRunner';
 import AIAssistant from '../components/AIAssistant';
 import NotesPanel from '../components/NotesPanel';
+import TowerLoader from '../components/TowerLoader';
 import api from '../utils/api';
 import confetti from 'canvas-confetti';
 import { Users, Code, PenTool, Play, LogOut, Copy, Hash, MessageSquare, Download, Wifi, WifiOff, CheckCircle2, AlertCircle, Keyboard, X, Sparkles, PanelBottom, Maximize2, Minimize2, Settings2, Plus, Minus, MonitorPlay, MonitorStop, Terminal, Layers, ChevronDown, DoorOpen, Loader2, FileText } from 'lucide-react';
@@ -43,6 +44,7 @@ const Room = () => {
   const [activePreset, setActivePreset] = useState('coding');
   const [presetAnimating, setPresetAnimating] = useState(null);
   const [isRoomReady, setIsRoomReady] = useState(false);
+  const [roomError, setRoomError] = useState(null);
   const [isWhiteboardLoading, setIsWhiteboardLoading] = useState(false);
 
   const [messages, setMessages] = useState([]);
@@ -70,9 +72,19 @@ const Room = () => {
 
   useEffect(() => {
     if (!roomId) return;
+    setRoomError(null);
     api.get(`/rooms/${roomId}`).then(res => {
       setRoomAdminId(res.data.admin);
-    }).catch(() => {});
+    }).catch(err => {
+      const status = err.response?.status;
+      if (status === 404) {
+        setRoomError('Room not found');
+      } else if (status === 403) {
+        setRoomError('Not authorized to access this room');
+      } else {
+        setRoomError('Failed to load room');
+      }
+    });
   }, [roomId]);
 
   const applyPreset = (preset) => {
@@ -286,6 +298,10 @@ const Room = () => {
       navigate('/dashboard');
     });
 
+    socket.on('room-join-error', ({ message }) => {
+      setRoomError(message || 'Access denied');
+    });
+
     return () => {
       socket.emit('leave-room', { roomId, username: user.username });
       socket.off('connect', onConnect);
@@ -312,6 +328,7 @@ const Room = () => {
       socket.off('message-deleted');
       socket.off('notes-notification');
       socket.off('room-deleted');
+      socket.off('room-join-error');
     };
   }, [roomId, user, socket]);
 
@@ -411,24 +428,28 @@ const Room = () => {
   }, [activeTab]);
 
   return (
-    <div className="flex h-screen w-screen bg-[#070a14] text-white overflow-hidden font-sans selection:bg-indigo-500/30 flex-col md:flex-row p-2 md:p-3 lg:p-4 gap-1.5 md:gap-2 box-border relative">
-      
+    <div className="flex h-screen w-screen aurora-bg text-white overflow-hidden font-sans selection:bg-indigo-500/30 flex-col md:flex-row p-2 md:p-3 lg:p-4 gap-1.5 md:gap-2 box-border relative">
+      <div className="grid-overlay"></div>
       <div className="fixed inset-0 bg-gradient-to-br from-indigo-950/20 via-transparent to-purple-950/20 pointer-events-none z-0"></div>
 
       {/* Initial Loading Overlay */}
-      {!isRoomReady && (
-        <div className="absolute inset-0 z-[100] bg-[#070a14] flex flex-col items-center justify-center animate-fadeIn">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-2xl shadow-indigo-500/30 mb-6 animate-pulse">
-            <Code className="w-7 h-7 text-white" />
-          </div>
-          <div className="flex items-center gap-2.5 mb-2">
-            <Loader2 className="w-4 h-4 text-indigo-400 animate-spin" />
-            <span className="text-sm font-medium text-slate-300">Connecting to room...</span>
-          </div>
-          <div className="flex gap-1.5 mt-3">
-            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{animationDelay: '0ms'}}></span>
-            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{animationDelay: '150ms'}}></span>
-            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{animationDelay: '300ms'}}></span>
+      {!isRoomReady && !roomError && <TowerLoader fullScreen text="Joining CodeSync room..." />}
+
+      {/* Room Error */}
+      {roomError && (
+        <div className="absolute inset-0 z-[100] flex items-center justify-center bg-[#05080f] animate-fadeIn px-4">
+          <div className="metallic-panel p-8 rounded-2xl shadow-2xl max-w-md w-full text-center">
+            <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-red-500/15 border border-red-500/25 flex items-center justify-center">
+              <AlertCircle className="w-7 h-7 text-red-400" />
+            </div>
+            <h3 className="text-lg font-bold text-white mb-2">Access Denied</h3>
+            <p className="text-sm text-slate-400 mb-6">{roomError}</p>
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="w-full py-3 rounded-xl glow-button text-white font-bold text-sm"
+            >
+              Back to Dashboard
+            </button>
           </div>
         </div>
       )}
@@ -451,14 +472,8 @@ const Room = () => {
 
       {/* Whiteboard Loading Overlay */}
       {isWhiteboardLoading && activeTab === 'whiteboard' && (
-        <div className="absolute inset-0 z-[60] bg-[#070a14]/90 flex flex-col items-center justify-center animate-fadeIn">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-xl shadow-indigo-500/30 mb-4">
-            <PenTool className="w-6 h-6 text-white" />
-          </div>
-          <div className="flex items-center gap-2.5">
-            <Loader2 className="w-4 h-4 text-indigo-400 animate-spin" />
-            <span className="text-sm font-medium text-slate-300">Loading whiteboard...</span>
-          </div>
+        <div className="absolute inset-0 z-[60] bg-[#05080f]/90 flex items-center justify-center animate-fadeIn">
+          <TowerLoader text="Loading whiteboard..." />
         </div>
       )}
 
@@ -483,7 +498,7 @@ const Room = () => {
       {/* Left Panel */}
       {showLeftPanel && (!isMobile || mobileTab === 'users') && (
         <div 
-          className="glass-panel rounded-2xl flex flex-col overflow-hidden border-white/10 shadow-2xl relative z-10 min-h-0 animate-fadeIn"
+          className="metallic-panel rounded-2xl flex flex-col overflow-hidden border-white/10 shadow-2xl relative z-10 min-h-0 animate-fadeIn"
           style={isMobile ? { width: '100%', flex: 1 } : { width: `${leftWidth}px`, flexShrink: 0 }}
         >
           {/* Header */}
@@ -672,7 +687,7 @@ const Room = () => {
         >
           
           {/* Top Action Bar */}
-          <div className="min-h-[52px] shrink-0 glass-panel rounded-t-[2rem] border-b-0 border-white/10 flex items-center justify-between px-3 md:px-5 py-1.5 z-20 relative overflow-x-hidden flex-wrap gap-1.5">
+          <div className="min-h-[52px] shrink-0 metallic-panel rounded-t-[2rem] border-b-0 border-white/10 flex items-center justify-between px-3 md:px-5 py-1.5 z-20 relative overflow-x-hidden flex-wrap gap-1.5">
             <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent"></div>
 
             {/* Left: Tab switcher */}
@@ -892,7 +907,7 @@ const Room = () => {
           </div>
 
           {/* Main Workspace */}
-          <div className="flex-1 relative bg-gradient-to-br from-[#0d1117] to-[#0f111a] border border-white/[0.07] z-10 overflow-hidden shadow-2xl">
+          <div className="flex-1 relative bg-gradient-to-br from-[#0d1117] to-[#0f111a] chrome-border z-10 overflow-hidden shadow-2xl">
             <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/[0.02] to-transparent pointer-events-none"></div>
             <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-indigo-500/20 to-transparent pointer-events-none"></div>
             <div className={`absolute inset-0 ${activeTab === 'editor' ? 'block' : 'hidden'}`}>
@@ -922,7 +937,7 @@ const Room = () => {
 
           {/* Output Window */}
           {showBottomPanel && (
-          <div className={`${isOutputExpanded ? 'h-[55vh]' : 'h-44 md:h-56'} glass-panel rounded-b-2xl border-t-0 border-white/10 flex flex-col z-20 transition-[height] duration-300 relative`}>
+          <div className={`${isOutputExpanded ? 'h-[55vh]' : 'h-44 md:h-56'} metallic-panel rounded-b-2xl border-t-0 border-white/10 flex flex-col z-20 transition-[height] duration-300 relative`}>
             <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent pointer-events-none"></div>
             <div className="bg-slate-900/60 border-b border-white/5 px-5 py-2 flex items-center justify-between shrink-0 backdrop-blur-sm">
               <div className="flex space-x-4">
@@ -1144,7 +1159,7 @@ const Room = () => {
       {/* Keyboard Shortcuts Modal */}
       {showShortcuts && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-md animate-fadeIn px-4">
-          <div className="bg-slate-900 border border-white/10 p-5 md:p-8 rounded-2xl md:rounded-[2rem] shadow-2xl max-w-lg w-full relative">
+          <div className="metallic-panel p-5 md:p-8 rounded-2xl md:rounded-[2rem] shadow-2xl max-w-lg w-full">
             <button 
               onClick={() => setShowShortcuts(false)}
               className="absolute top-6 right-6 text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 p-2 rounded-full transition-colors"

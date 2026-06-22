@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import api from '../utils/api';
+import TowerLoader from './TowerLoader';
 import { FileText, Plus, X, Check, Edit2, Trash2, Save, RotateCcw, Download, Loader2, AlertCircle, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react';
 
 const STATUS_OPTIONS = [
@@ -208,10 +209,7 @@ const NotesPanel = ({ roomId, socket }) => {
           </h3>
         </div>
         <div className="flex-1 flex items-center justify-center">
-          <div className="flex flex-col items-center gap-3">
-            <Loader2 className="w-6 h-6 text-indigo-400 animate-spin" />
-            <span className="text-sm text-slate-400">Loading notes...</span>
-          </div>
+          <TowerLoader text="Loading notes..." />
         </div>
       </div>
     );

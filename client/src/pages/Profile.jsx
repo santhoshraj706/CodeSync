@@ -2,6 +2,7 @@ import { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import api from '../utils/api';
+import TowerLoader from '../components/TowerLoader';
 import { User, Save, ArrowLeft, Loader2, AlertCircle, CheckCircle2, Mail, Building, GraduationCap, BookOpen } from 'lucide-react';
 
 const AVATAR_COLORS = [
@@ -112,18 +113,12 @@ const Profile = () => {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-[#070a14] flex items-center justify-center">
-        <div className="flex items-center gap-3">
-          <Loader2 className="w-5 h-5 text-indigo-400 animate-spin" />
-          <span className="text-sm text-slate-400">Loading profile...</span>
-        </div>
-      </div>
-    );
+    return <TowerLoader fullScreen text="Loading profile..." />;
   }
 
   return (
-    <div className="min-h-screen bg-[#070a14] text-white">
+    <div className="min-h-screen aurora-bg text-white">
+      <div className="grid-overlay"></div>
       <div className="fixed inset-0 bg-gradient-to-br from-indigo-950/20 via-transparent to-purple-950/20 pointer-events-none z-0"></div>
 
       <div className="relative z-10 max-w-2xl mx-auto px-4 py-8">
@@ -151,7 +146,7 @@ const Profile = () => {
         )}
 
         {/* Profile Card */}
-        <div className="bg-slate-950/40 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
+        <div className="metallic-panel rounded-3xl overflow-hidden shadow-2xl">
           {/* Avatar Section */}
           <div className="bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-transparent px-8 py-8 border-b border-white/10 flex flex-col items-center">
             <div
@@ -183,7 +178,7 @@ const Profile = () => {
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="Your full name"
-                  className="w-full bg-white/5 border border-white/10 focus:border-indigo-500/40 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:ring-1 focus:ring-indigo-500/30 transition-all"
+                  className="w-full glow-input rounded-xl px-4 py-2.5 text-sm"
                 />
               </div>
 
@@ -196,7 +191,7 @@ const Profile = () => {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="username"
-                  className="w-full bg-white/5 border border-white/10 focus:border-indigo-500/40 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:ring-1 focus:ring-indigo-500/30 transition-all"
+                  className="w-full glow-input rounded-xl px-4 py-2.5 text-sm"
                 />
               </div>
 
@@ -209,7 +204,7 @@ const Profile = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="email@example.com"
-                  className="w-full bg-white/5 border border-white/10 focus:border-indigo-500/40 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:ring-1 focus:ring-indigo-500/30 transition-all"
+                  className="w-full glow-input rounded-xl px-4 py-2.5 text-sm"
                 />
               </div>
 
@@ -222,7 +217,7 @@ const Profile = () => {
                   value={collegeName}
                   onChange={(e) => setCollegeName(e.target.value)}
                   placeholder="Your college (optional)"
-                  className="w-full bg-white/5 border border-white/10 focus:border-indigo-500/40 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:ring-1 focus:ring-indigo-500/30 transition-all"
+                  className="w-full glow-input rounded-xl px-4 py-2.5 text-sm"
                 />
               </div>
             </div>
@@ -234,7 +229,7 @@ const Profile = () => {
               <select
                 value={experienceLevel}
                 onChange={(e) => setExperienceLevel(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 focus:border-indigo-500/40 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:ring-1 focus:ring-indigo-500/30 transition-all appearance-none cursor-pointer"
+                className="w-full glow-input rounded-xl px-4 py-2.5 text-sm appearance-none cursor-pointer"
               >
                 {EXPERIENCE_LEVELS.map((level) => (
                   <option key={level} value={level} className="bg-slate-900 text-white">
@@ -254,7 +249,7 @@ const Profile = () => {
                 placeholder="Tell us about yourself (optional, max 200 chars)"
                 maxLength={200}
                 rows={3}
-                className="w-full bg-white/5 border border-white/10 focus:border-indigo-500/40 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:ring-1 focus:ring-indigo-500/30 transition-all resize-none"
+                className="w-full glow-input rounded-xl px-4 py-2.5 text-sm resize-none"
               />
               <span className="text-[10px] text-slate-600">{bio.length}/200</span>
             </div>
@@ -280,7 +275,7 @@ const Profile = () => {
               <button
                 type="submit"
                 disabled={saving}
-                className="flex items-center gap-2 px-6 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl text-sm font-semibold transition-all shadow-lg shadow-indigo-500/20 border border-indigo-400/30 active:scale-95 disabled:opacity-50 disabled:active:scale-100"
+                className="flex items-center gap-2 px-6 py-2.5 glow-button rounded-xl text-sm"
               >
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                 {saving ? 'Saving...' : 'Save Changes'}

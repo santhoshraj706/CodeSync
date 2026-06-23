@@ -328,13 +328,26 @@ const ChatWindow = ({ conversation, onBack, onViewProfile, isOnline, otherUser }
         className="flex-1 overflow-y-auto p-3 space-y-1 relative"
       >
         {loading ? (
-          <div className="flex flex-col items-center justify-center h-full gap-3">
-            <div className="flex gap-1">
-              <div className="w-2 h-2 rounded-full bg-indigo-500/50 animate-bounce" style={{ animationDelay: '0ms' }}></div>
-              <div className="w-2 h-2 rounded-full bg-indigo-500/50 animate-bounce" style={{ animationDelay: '150ms' }}></div>
-              <div className="w-2 h-2 rounded-full bg-indigo-500/50 animate-bounce" style={{ animationDelay: '300ms' }}></div>
-            </div>
-            <span className="text-xs text-slate-500">Loading messages...</span>
+          <div className="p-3 space-y-3 animate-pulse">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className={`flex ${i % 2 === 0 ? 'justify-end' : 'justify-start'}`}>
+                <div className={`${i % 2 === 0 ? 'max-w-[65%]' : 'max-w-[75%]'} w-full`}>
+                  <div className={`p-3 rounded-2xl ${i % 2 === 0 ? 'rounded-br-md' : 'rounded-bl-md'} bg-white/[0.06] border border-white/[0.06]`}>
+                    {i % 2 !== 0 && (
+                      <div className="h-2.5 bg-white/[0.06] rounded w-1/3 mb-2"></div>
+                    )}
+                    <div className="space-y-2">
+                      <div className="h-3 bg-white/[0.06] rounded w-full"></div>
+                      <div className={`h-3 bg-white/[0.06] rounded ${i % 2 === 0 ? 'w-2/3' : 'w-4/5'}`}></div>
+                      {i === 1 && <div className="h-3 bg-white/[0.06] rounded w-1/2"></div>}
+                    </div>
+                    <div className="flex justify-end mt-2">
+                      <div className="h-2 bg-white/[0.04] rounded w-12"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         ) : messages.length === 0 && roomInvites.length === 0 ? (
           <div className="flex items-center justify-center h-full">

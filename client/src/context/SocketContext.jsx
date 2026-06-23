@@ -20,12 +20,21 @@ export const SocketProvider = ({ children }) => {
         transports: ['websocket', 'polling'],
       });
 
+      const emitOnline = () => {
+        const uid = user?._id ?? user?.id;
+        if (uid) {
+          newSocket.emit('user-online', { userId: uid });
+        }
+      };
+
       newSocket.on('connect', () => {
         console.log('[Socket] Connected:', newSocket.id);
+        emitOnline();
       });
 
       newSocket.on('reconnect', (attemptNumber) => {
         console.log('[Socket] Reconnected after', attemptNumber, 'attempts');
+        emitOnline();
         // The Room component will re-emit join-room on socket change
       });
 

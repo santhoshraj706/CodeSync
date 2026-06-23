@@ -10,8 +10,9 @@ import ChatWindow from '../components/ChatWindow';
 import ProfileDrawer from '../components/ProfileDrawer';
 import InviteToRoom from '../components/InviteToRoom';
 import RoomInviteList from '../components/RoomInviteList';
+import SentRoomInviteList from '../components/SentRoomInviteList';
 import {
-  ArrowLeft, MessageCircle, UserPlus, CheckCircle2, AlertCircle,
+  ArrowLeft, ArrowRight, MessageCircle, UserPlus, CheckCircle2, AlertCircle,
   Send, Inbox, Users, Loader2, Search, LogIn, DoorOpen
 } from 'lucide-react';
 
@@ -34,9 +35,11 @@ const Messages = () => {
   const [profileUser, setProfileUser] = useState(null);
   const [sentRequestIds, setSentRequestIds] = useState(new Set());
   const [inviteFromDrawer, setInviteFromDrawer] = useState(null);
+  const [sentInvites, setSentInvites] = useState([]);
+  const [sentInvitesLoading, setSentInvitesLoading] = useState(true);
 
-  const showToast = (message, type = 'success') => {
-    setToast({ message, type });
+  const showToast = (message, type = 'success', actionRoomId = null) => {
+    setToast({ message, type, actionRoomId });
     setTimeout(() => setToast(null), 3000);
   };
 
@@ -44,18 +47,21 @@ const Messages = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const [convRes, incomingRes, outgoingRes] = await Promise.all([
+        const [convRes, incomingRes, outgoingRes, sentInvitesRes] = await Promise.all([
           api.get('/conversations'),
           api.get('/chat-requests/incoming'),
           api.get('/chat-requests/outgoing'),
+          api.get('/room-invites/outgoing'),
         ]);
         setConversations(convRes.data);
         setIncomingRequests(incomingRes.data);
         setOutgoingRequests(outgoingRes.data);
+        setSentInvites(sentInvitesRes.data || []);
       } catch (err) {
         console.error('Failed to load messages data:', err);
       } finally {
         setLoading(false);
+        setSentInvitesLoading(false);
       }
     };
     fetchData();
@@ -80,7 +86,22 @@ const Messages = () => {
     }
   }, [socket, user]);
 
-
+  useEffect(() => {
+    if (!socket) return;
+    const handler = (data) => {
+      const name = data.fromFullName || data.fromUsername || 'Someone';
+      showToast(`${name} accepted your invite to ${data.roomId}! Click to join.`, 'success', data.roomId);
+      setSentInvites(prev =>
+        prev.map(inv =>
+          inv.roomId === data.roomId && inv.status === 'pending'
+            ? { ...inv, status: 'accepted' }
+            : inv
+        )
+      );
+    };
+    socket.on('invite-accepted', handler);
+    return () => socket.off('invite-accepted', handler);
+  }, [socket, showToast]);
 
   const hasReachedConvLimit = useMemo(() => {
     if (!conversations.length || !profileUser) return false;
@@ -306,14 +327,56 @@ const Messages = () => {
                     />
                   )}
                   {activeTab === 'invites' && (
-                    <RoomInviteList onViewProfile={handleViewProfile} />
+                    <>
+                      <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-2 flex items-center gap-1.5 px-1">
+                        <LogIn className="w-3 h-3" /> Received
+                      </div>
+                      <RoomInviteList onViewProfile={handleViewProfile} />
+                      <div className="my-3 border-t border-white/[0.06]" />
+                      <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-2 flex items-center gap-1.5 px-1">
+                        <Send className="w-3 h-3" /> Sent
+                      </div>
+                      <SentRoomInviteList
+                        sentInvites={sentInvites}
+                        loading={sentInvitesLoading}
+                        onViewProfile={handleViewProfile}
+                        onDelete={(id) => {
+                          api.delete(`/room-invites/${id}`)
+                            .then(() => setSentInvites(prev => prev.filter(inv => inv._id !== id)))
+                            .catch(err => console.error('Failed to delete invite:', err));
+                        }}
+                      />
+                    </>
                   )}
                   {activeTab === 'outgoing' && (
-                    <ChatRequestList
-                      requests={outgoingRequests}
-                      type="outgoing"
-                      onViewProfile={handleViewProfile}
-                    />
+                    <>
+                      {outgoingRequests.length > 0 && (
+                        <>
+                          <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-2 flex items-center gap-1.5 px-1">
+                            <UserPlus className="w-3 h-3" /> Chat Requests
+                          </div>
+                          <ChatRequestList
+                            requests={outgoingRequests}
+                            type="outgoing"
+                            onViewProfile={handleViewProfile}
+                          />
+                          <div className="my-3 border-t border-white/[0.06]" />
+                        </>
+                      )}
+                      <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-2 flex items-center gap-1.5 px-1">
+                        <LogIn className="w-3 h-3" /> Room Invites
+                      </div>
+                      <SentRoomInviteList
+                        sentInvites={sentInvites}
+                        loading={sentInvitesLoading}
+                        onViewProfile={handleViewProfile}
+                        onDelete={(id) => {
+                          api.delete(`/room-invites/${id}`)
+                            .then(() => setSentInvites(prev => prev.filter(inv => inv._id !== id)))
+                            .catch(err => console.error('Failed to delete invite:', err));
+                        }}
+                      />
+                    </>
                   )}
                 </>
               )}
@@ -403,13 +466,19 @@ const Messages = () => {
 
       {/* Toast */}
       {toast && (
-        <div className={`fixed bottom-6 md:bottom-10 left-1/2 transform -translate-x-1/2 z-[100] animate-fadeIn px-4 w-full md:w-auto ${
-          toast.type === 'error'
-            ? 'bg-red-500/20 border-red-500/30 text-red-300'
-            : 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300'
-        } flex items-center gap-3 px-4 md:px-5 py-2.5 md:py-3 rounded-full shadow-2xl backdrop-blur-md border text-sm`}>
-          {toast.type === 'error' ? <AlertCircle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
-          <span className="font-semibold text-sm tracking-wide">{toast.message}</span>
+        <div
+          className={`fixed bottom-6 md:bottom-10 left-1/2 transform -translate-x-1/2 z-[100] animate-fadeIn px-4 w-full md:w-auto ${toast.actionRoomId ? 'cursor-pointer' : ''}`}
+          onClick={() => { if (toast.actionRoomId) { setToast(null); navigate(`/room/${toast.actionRoomId}`); } }}
+        >
+          <div className={`flex items-center gap-3 px-4 md:px-5 py-2.5 md:py-3 rounded-full shadow-2xl backdrop-blur-md border text-sm ${
+            toast.type === 'error'
+              ? 'bg-red-500/20 border-red-500/30 text-red-300'
+              : 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300'
+          }`}>
+            {toast.type === 'error' ? <AlertCircle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
+            <span className="font-semibold text-sm tracking-wide">{toast.message}</span>
+            {toast.actionRoomId && <ArrowRight className="w-4 h-4 shrink-0 opacity-70" />}
+          </div>
         </div>
       )}
     </div>

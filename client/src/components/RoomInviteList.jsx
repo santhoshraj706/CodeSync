@@ -1,6 +1,7 @@
 import { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import { SocketContext } from '../context/SocketContext';
 import api from '../utils/api';
 import {
   LogIn, Check, X, User, Hash, Clock, Loader2, Copy, CheckCheck, ExternalLink, FileText
@@ -35,6 +36,7 @@ const timeAgo = (ts) => {
 const RoomInviteList = ({ onViewProfile }) => {
   const navigate = useNavigate();
   const { user } = useContext(AuthContext);
+  const socket = useContext(SocketContext);
   const [invites, setInvites] = useState([]);
   const [loading, setLoading] = useState(true);
   const [acceptedId, setAcceptedId] = useState(null);
@@ -47,6 +49,15 @@ const RoomInviteList = ({ onViewProfile }) => {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!socket) return;
+    const handler = ({ inviteId }) => {
+      setInvites(prev => prev.filter(inv => inv._id !== inviteId));
+    };
+    socket.on('invite-deleted', handler);
+    return () => socket.off('invite-deleted', handler);
+  }, [socket]);
 
   const handleAccept = async (inviteId) => {
     try {

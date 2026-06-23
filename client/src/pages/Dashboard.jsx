@@ -1,6 +1,7 @@
 import { useState, useEffect, useContext, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import { SocketContext } from '../context/SocketContext';
 import api from '../utils/api';
 import TowerLoader from '../components/TowerLoader';
 import NeonWireframeBackground from '../components/NeonWireframeBackground';
@@ -59,6 +60,7 @@ const TEMPLATE_IDS = {
 
 const Dashboard = () => {
   const { user, logout } = useContext(AuthContext);
+  const socket = useContext(SocketContext);
   const [roomId, setRoomId] = useState('');
   const [roomPassword, setRoomPassword] = useState('');
   const [recentRooms, setRecentRooms] = useState([]);
@@ -79,9 +81,9 @@ const Dashboard = () => {
 
   const toastTimeoutRef = useRef(null);
 
-  const showToast = useCallback((message, type = 'error') => {
+  const showToast = useCallback((message, type = 'error', actionRoomId = null) => {
     if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
-    setToast({ message, type });
+    setToast({ message, type, actionRoomId });
     toastTimeoutRef.current = setTimeout(() => setToast(null), 3000);
   }, []);
 
@@ -122,6 +124,18 @@ const Dashboard = () => {
     }
   }, []);
 
+  useEffect(() => {
+    if (!socket) return;
+    const handler = (data) => {
+      const name = data.fromFullName || data.fromUsername || 'Someone';
+      const roomLabel = data.roomId;
+      showToast(`${name} accepted your invite to ${roomLabel}! Click to join.`, 'success', roomLabel);
+      logActivity('accepted-invite', roomLabel);
+    };
+    socket.on('invite-accepted', handler);
+    return () => socket.off('invite-accepted', handler);
+  }, [socket, showToast, logActivity]);
+
   const handleCreateRoom = async (e) => {
     e.preventDefault();
     if (!roomId || !roomPassword) return showToast('Fill all fields');
@@ -155,6 +169,8 @@ const Dashboard = () => {
       showToast(err.response?.data?.message || 'Error deleting room');
     }
   };
+
+  const userId = user?._id ?? user?.id;
 
   const handleLogout = () => {
     logout();
@@ -213,7 +229,7 @@ const Dashboard = () => {
   const filteredRooms = recentRooms.filter((room) => {
     const matchesSearch = room.roomId?.toLowerCase().includes(roomSearch.trim().toLowerCase());
     const isPinned = favoriteRooms.includes(room.roomId);
-    const isAdmin = room.admin === user?.id;
+    const isAdmin = room.admin === userId;
     const daysSince = Math.floor((Date.now() - new Date(room.updatedAt).getTime()) / (1000 * 60 * 60 * 24));
     const isRecent = daysSince < 7;
     switch (roomFilterTab) {
@@ -224,7 +240,7 @@ const Dashboard = () => {
     }
   });
 
-  const adminRooms = recentRooms.filter((room) => room.admin === user?.id).length;
+  const adminRooms = recentRooms.filter((room) => room.admin === userId).length;
   const latestRoom = [...recentRooms].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))[0];
 
   const ActivityIcon = ({ action }) => {
@@ -616,7 +632,7 @@ const Dashboard = () => {
                 <div className="grid md:grid-cols-2 gap-3">
                   {filteredRooms.map((room, idx) => {
                     const isPinned = favoriteRooms.includes(room.roomId);
-                    const isAdmin = room.admin === user?.id;
+                    const isAdmin = room.admin === userId;
                     const memberCount = room.members?.length || 1;
                     const langMap = { javascript: 'JS', python: 'Py', java: 'Java', cpp: 'C++', c: 'C' };
                     const langLabel = langMap[room.language] || room.language?.toUpperCase() || 'JS';
@@ -852,10 +868,14 @@ const Dashboard = () => {
 
       {/* Toast */}
       {toast && (
-        <div className="fixed bottom-6 md:bottom-10 left-1/2 transform -translate-x-1/2 z-[100] animate-fadeIn px-4 w-full md:w-auto">
+        <div
+          className={`fixed bottom-6 md:bottom-10 left-1/2 transform -translate-x-1/2 z-[100] animate-fadeIn px-4 w-full md:w-auto ${toast.actionRoomId ? 'cursor-pointer' : ''}`}
+          onClick={() => { if (toast.actionRoomId) { setToast(null); navigate(`/room/${toast.actionRoomId}`); } }}
+        >
           <div className={`flex items-center gap-3 px-4 md:px-5 py-2.5 md:py-3 rounded-full shadow-2xl backdrop-blur-md border text-sm ${toast.type === 'error' ? 'bg-red-500/20 border-red-500/30 text-red-300' : 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300'}`}>
             {toast.type === 'error' ? <AlertCircle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
             <span className="font-semibold text-sm tracking-wide">{toast.message}</span>
+            {toast.actionRoomId && <ArrowRight className="w-4 h-4 shrink-0 opacity-70" />}
           </div>
         </div>
       )}

@@ -2,8 +2,10 @@ const express = require('express');
 const router = express.Router();
 const RoomInvite = require('../models/RoomInvite');
 const Room = require('../models/Room');
+const User = require('../models/User');
 const Conversation = require('../models/Conversation');
 const jwt = require('jsonwebtoken');
+const { onlineUsers } = require('../socket/socket');
 
 const auth = (req, res, next) => {
   const token = req.header('x-auth-token');
@@ -49,6 +51,18 @@ router.get('/incoming', auth, async (req, res) => {
   }
 });
 
+router.get('/outgoing', auth, async (req, res) => {
+  try {
+    const invites = await RoomInvite.find({ from: req.user.id })
+      .populate('to', 'username fullName avatarColor')
+      .sort({ createdAt: -1 });
+    res.json(invites);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+});
+
 router.put('/:id/accept', auth, async (req, res) => {
   try {
     const invite = await RoomInvite.findById(req.params.id);
@@ -67,7 +81,58 @@ router.put('/:id/accept', auth, async (req, res) => {
       await room.save();
     }
 
+    // Notify the sender (invite creator) that their invite was accepted
+    try {
+      const acceptor = await User.findById(req.user.id).select('username fullName');
+      const senderId = invite.from.toString();
+      const io = req.app.get('io');
+      const payload = {
+        fromUserId: req.user.id,
+        fromUsername: acceptor?.username || 'Someone',
+        fromFullName: acceptor?.fullName || '',
+        roomId: invite.roomId,
+        note: invite.note || '',
+      };
+      // Emit to all socket connections of the sender
+      const senderSockets = onlineUsers[senderId];
+      if (senderSockets) {
+        senderSockets.forEach((sid) => {
+          io.to(sid).emit('invite-accepted', payload);
+        });
+      }
+    } catch (notifyErr) {
+      console.error('Failed to notify sender about accepted invite:', notifyErr.message);
+    }
+
     res.json({ message: 'Invite accepted', roomId: invite.roomId, roomPassword: room.roomPassword });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+});
+
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    const invite = await RoomInvite.findById(req.params.id);
+    if (!invite) return res.status(404).json({ message: 'Invite not found' });
+    if (invite.from.toString() !== req.user.id) return res.status(403).json({ message: 'Not authorized' });
+    await RoomInvite.findByIdAndDelete(req.params.id);
+
+    // Notify the recipient that this invite was deleted
+    try {
+      const recipientId = invite.to.toString();
+      const io = req.app.get('io');
+      const recipientSockets = onlineUsers[recipientId];
+      if (recipientSockets) {
+        recipientSockets.forEach((sid) => {
+          io.to(sid).emit('invite-deleted', { inviteId: req.params.id });
+        });
+      }
+    } catch (notifyErr) {
+      console.error('Failed to notify recipient about deleted invite:', notifyErr.message);
+    }
+
+    res.json({ message: 'Invite deleted' });
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server Error');

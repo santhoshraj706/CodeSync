@@ -532,4 +532,4 @@ const socketHandler = (io) => {
   });
 };
 
-module.exports = { socketHandler, roomUsers, roomStates, roomPresenters, roomAdmins };
+module.exports = { socketHandler, roomUsers, roomStates, roomPresenters, roomAdmins, onlineUsers };

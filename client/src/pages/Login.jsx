@@ -2,7 +2,7 @@ import { useState, useContext } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import api from '../utils/api';
-import { LogIn, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { LogIn, AlertCircle, Eye, EyeOff, Loader2 } from 'lucide-react';
 import NeonWireframeBackground from '../components/NeonWireframeBackground';
 
 const Login = () => {
@@ -10,18 +10,22 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
     try {
       const res = await api.post('/auth/login', { email, password });
       login(res.data.token, res.data.user);
       navigate('/dashboard');
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -104,9 +108,11 @@ const Login = () => {
           <div className="animate-fadeIn animate-delay-300 pt-4">
             <button
               type="submit"
-              className="w-full text-white font-bold p-4 rounded-xl glow-button text-lg tracking-wide flex items-center justify-center gap-2 group"
+              disabled={loading}
+              className="w-full text-white font-bold p-4 rounded-xl glow-button text-lg tracking-wide flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Sign In <LogIn className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <LogIn className="w-5 h-5 group-hover:translate-x-1 transition-transform" />}
+              {loading ? 'Signing in...' : 'Sign In'}
             </button>
           </div>
         </form>

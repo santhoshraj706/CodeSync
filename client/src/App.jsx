@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useContext, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, AuthContext } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
@@ -7,13 +7,14 @@ import Landing from './pages/Landing';
 import Guide from './pages/Guide';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
-import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
-import Room from './pages/Room';
 import Discover from './pages/Discover';
-import Messages from './pages/Messages';
 import PublicProfile from './pages/PublicProfile';
 import NotFound from './pages/NotFound';
+
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Room = lazy(() => import('./pages/Room'));
+const Messages = lazy(() => import('./pages/Messages'));
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useContext(AuthContext);
@@ -34,6 +35,7 @@ const App = () => {
     <AuthProvider>
       <SocketProvider>
         <Router>
+          <Suspense fallback={<TowerLoader fullScreen text="Loading..." />}>
           <Routes>
             <Route path="/" element={
               <PublicRoute>
@@ -83,6 +85,7 @@ const App = () => {
             } />
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </Suspense>
         </Router>
       </SocketProvider>
     </AuthProvider>

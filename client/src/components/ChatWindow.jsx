@@ -5,9 +5,11 @@ import { SocketContext } from '../context/SocketContext';
 import api from '../utils/api';
 import {
   Send, Loader2, User, LogIn, ChevronDown, Copy, CheckCheck, Clock, ArrowLeft,
-  Hash, Check, X, ExternalLink, Trash2, Hourglass, CheckCircle2, AlertCircle, FileText
+  Hash, Check, X, ExternalLink, Trash2, Hourglass, CheckCircle2, AlertCircle, FileText,
+  Shield, ShieldOff, Ban, Edit3, Save
 } from 'lucide-react';
 import InviteToRoom from './InviteToRoom';
+import EmojiPickerButton from './EmojiPickerButton';
 
 const AVATAR_COLORS = [
   '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f97316',
@@ -59,10 +61,22 @@ const ChatWindow = ({ conversation, onBack, onViewProfile, isOnline, otherUser }
   const [copiedId, setCopiedId] = useState(null);
   const [roomInvites, setRoomInvites] = useState([]);
   const [deleteConfirmInviteId, setDeleteConfirmInviteId] = useState(null);
+  const [blockStatus, setBlockStatus] = useState({ blockedByMe: false, blockedMe: false });
+  const [showBlockConfirm, setShowBlockConfirm] = useState(false);
+  const [showUnblockConfirm, setShowUnblockConfirm] = useState(false);
+  const [editingMessageId, setEditingMessageId] = useState(null);
+  const [editText, setEditText] = useState('');
+  const [deleteConfirmMsgId, setDeleteConfirmMsgId] = useState(null);
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const inputRef = useRef(null);
+
+  const [toast, setToast] = useState(null);
+  const showToast = (message, type = 'error') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   const other = otherUser || conversation?.participants?.find(p => String(p._id ?? p.id) !== String(currentUserId));
 
@@ -89,10 +103,12 @@ const ChatWindow = ({ conversation, onBack, onViewProfile, isOnline, otherUser }
     Promise.all([
       api.get(`/direct-messages/${conversation._id}`),
       otherId ? api.get(`/room-invites/between/${otherId}`) : Promise.resolve({ data: [] }),
+      otherId ? api.get(`/blocks/status/${otherId}`) : Promise.resolve({ data: { blockedByMe: false, blockedMe: false } }),
     ])
-      .then(([msgRes, inviteRes]) => {
+      .then(([msgRes, inviteRes, blockRes]) => {
         setMessages(msgRes.data);
         setRoomInvites(inviteRes.data || []);
+        setBlockStatus(blockRes.data);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -160,6 +176,19 @@ const ChatWindow = ({ conversation, onBack, onViewProfile, isOnline, otherUser }
     const inviteDeletedHandler = ({ inviteId }) => {
       setRoomInvites(prev => prev.filter(inv => inv._id !== inviteId));
     };
+    const msgBlockedHandler = (data) => {
+      if (String(data.conversationId) === String(cid)) {
+        showToast(data.message, 'error');
+      }
+    };
+    const userBlockedHandler = ({ userId }) => {
+      const otherId = other?._id ?? other?.id;
+      if (String(userId) === String(otherId)) setBlockStatus(prev => ({ ...prev, blockedMe: true }));
+    };
+    const userUnblockedHandler = ({ userId }) => {
+      const otherId = other?._id ?? other?.id;
+      if (String(userId) === String(otherId)) setBlockStatus(prev => ({ ...prev, blockedMe: false }));
+    };
 
     socket.on('direct-message', handler);
     socket.on('direct-typing-start', typingStartHandler);
@@ -167,6 +196,25 @@ const ChatWindow = ({ conversation, onBack, onViewProfile, isOnline, otherUser }
     socket.on('invite-sent', inviteSentHandler);
     socket.on('invite-accepted', inviteAcceptedHandler);
     socket.on('invite-deleted', inviteDeletedHandler);
+    socket.on('direct-message-blocked', msgBlockedHandler);
+    socket.on('user-blocked', userBlockedHandler);
+    const msgEditedHandler = (data) => {
+      if (String(data.conversation) === String(cid)) {
+        setMessages(prev => prev.map(m =>
+          String(m._id) === String(data._id) ? { ...m, text: data.text, isEdited: data.isEdited } : m
+        ));
+      }
+    };
+
+    const msgDeletedHandler = (data) => {
+      if (String(data.conversation) === String(cid)) {
+        setMessages(prev => prev.filter(m => String(m._id) !== String(data._id)));
+      }
+    };
+
+    socket.on('direct-message-edited', msgEditedHandler);
+    socket.on('direct-message-deleted', msgDeletedHandler);
+    socket.on('user-unblocked', userUnblockedHandler);
 
     return () => {
       socket.off('direct-message', handler);
@@ -175,6 +223,11 @@ const ChatWindow = ({ conversation, onBack, onViewProfile, isOnline, otherUser }
       socket.off('invite-sent', inviteSentHandler);
       socket.off('invite-accepted', inviteAcceptedHandler);
       socket.off('invite-deleted', inviteDeletedHandler);
+      socket.off('direct-message-blocked', msgBlockedHandler);
+      socket.off('direct-message-edited', msgEditedHandler);
+      socket.off('direct-message-deleted', msgDeletedHandler);
+      socket.off('user-blocked', userBlockedHandler);
+      socket.off('user-unblocked', userUnblockedHandler);
       socket.emit('leave-dm', { conversationId: cid });
       setTyping(false);
     };
@@ -248,12 +301,91 @@ const ChatWindow = ({ conversation, onBack, onViewProfile, isOnline, otherUser }
     }
   };
 
+  const handleEmojiSelect = (emoji) => {
+    const el = inputRef.current;
+    if (!el) return;
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    const val = newMessage;
+    const newVal = val.slice(0, start) + emoji + val.slice(end);
+    setNewMessage(newVal);
+    requestAnimationFrame(() => {
+      el.focus();
+      el.selectionStart = el.selectionEnd = start + emoji.length;
+    });
+  };
+
+  const handleBlock = async () => {
+    try {
+      await api.post(`/blocks/${other._id ?? other.id}`);
+      setBlockStatus(prev => ({ ...prev, blockedByMe: true }));
+    } catch (err) {
+      console.error('Failed to block user:', err);
+    }
+    setShowBlockConfirm(false);
+  };
+
+  const handleUnblock = async () => {
+    try {
+      await api.delete(`/blocks/${other._id ?? other.id}`);
+      setBlockStatus(prev => ({ ...prev, blockedByMe: false }));
+    } catch (err) {
+      console.error('Failed to unblock user:', err);
+    }
+    setShowUnblockConfirm(false);
+  };
+
   const handleCopy = async (text, id) => {
     try {
       await navigator.clipboard.writeText(text);
       setCopiedId(id);
       setTimeout(() => setCopiedId(null), 2000);
     } catch {}
+  };
+
+  const handleEditMessage = (msg) => {
+    setEditingMessageId(msg._id);
+    setEditText(msg.text);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingMessageId(null);
+    setEditText('');
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editText.trim() || !editingMessageId || !socket || !conversation) return;
+    const text = editText.trim();
+    socket.emit('direct-message-edit', {
+      conversationId: conversation._id,
+      messageId: editingMessageId,
+      text,
+    });
+    setMessages(prev => prev.map(m =>
+      String(m._id) === String(editingMessageId) ? { ...m, text, isEdited: true } : m
+    ));
+    setEditingMessageId(null);
+    setEditText('');
+  };
+
+  const handleEditKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSaveEdit();
+    }
+    if (e.key === 'Escape') {
+      handleCancelEdit();
+    }
+  };
+
+  const handleDeleteMessage = () => {
+    if (!deleteConfirmMsgId || !socket || !conversation) return;
+    socket.emit('direct-message-delete', {
+      conversationId: conversation._id,
+      messageId: deleteConfirmMsgId,
+    });
+    setMessages(prev => prev.filter(m => String(m._id) !== String(deleteConfirmMsgId)));
+    setDeleteConfirmMsgId(null);
   };
 
   if (!conversation || !other) {
@@ -267,9 +399,9 @@ const ChatWindow = ({ conversation, onBack, onViewProfile, isOnline, otherUser }
   const otherAvatarColor = other.avatarColor || generateAvatarColor(other.fullName || other.username);
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full w-full">
       {/* Header */}
-      <div className="flex items-center gap-2.5 p-3 border-b border-white/10 shrink-0 metallic-panel rounded-none">
+      <div className="flex items-center gap-2.5 p-2 md:p-2.5 border-b border-white/10 shrink-0 metallic-panel rounded-none w-full">
         <button onClick={onBack} className="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.06] transition-all">
           <ArrowLeft className="w-5 h-5" />
         </button>
@@ -318,20 +450,65 @@ const ChatWindow = ({ conversation, onBack, onViewProfile, isOnline, otherUser }
           >
             <LogIn className="w-4 h-4" />
           </button>
+          {blockStatus.blockedMe ? (
+            <div className="p-2 rounded-lg text-slate-500 cursor-not-allowed" title="This user has blocked you">
+              <Ban className="w-4 h-4" />
+            </div>
+          ) : blockStatus.blockedByMe ? (
+            <button
+              onClick={() => setShowUnblockConfirm(true)}
+              className="p-2 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all border border-transparent hover:border-red-500/20"
+              title="Unblock user"
+            >
+              <ShieldOff className="w-4 h-4" />
+            </button>
+          ) : (
+            <button
+              onClick={() => setShowBlockConfirm(true)}
+              className="p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all border border-transparent hover:border-red-500/20"
+              title="Block user"
+            >
+              <Shield className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
+
+      {/* Block banner */}
+      {(blockStatus.blockedByMe || blockStatus.blockedMe) && (
+        <div className={`mx-2 mt-1 px-2.5 py-1.5 rounded-lg border flex items-center gap-1.5 ${
+          blockStatus.blockedByMe
+            ? 'bg-amber-500/10 border-amber-500/20 text-amber-300'
+            : 'bg-red-500/10 border-red-500/20 text-red-300'
+        }`}>
+          <Ban className="w-4 h-4 shrink-0" />
+          <span className="text-xs font-medium flex-1">
+            {blockStatus.blockedByMe
+              ? 'You blocked this user. Unblock to continue chatting.'
+              : 'You cannot send messages to this user.'}
+          </span>
+          {blockStatus.blockedByMe && (
+            <button
+              onClick={() => setShowUnblockConfirm(true)}
+              className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-white/[0.08] hover:bg-white/[0.14] transition-all shrink-0"
+            >
+              Unblock
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Messages */}
       <div
         ref={messagesContainerRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto p-3 space-y-1 relative"
+        className="flex-1 w-full overflow-y-auto px-3 md:px-5 py-2 md:py-3 space-y-0.5 relative"
       >
         {loading ? (
           <div className="p-3 space-y-3 animate-pulse">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className={`flex ${i % 2 === 0 ? 'justify-end' : 'justify-start'}`}>
-                <div className={`${i % 2 === 0 ? 'max-w-[65%]' : 'max-w-[75%]'} w-full`}>
+              <div key={i} className={`flex w-full ${i % 2 === 0 ? 'justify-end' : 'justify-start'}`}>
+                <div className="w-full max-w-[70%] md:max-w-[60%]">
                   <div className={`p-3 rounded-2xl ${i % 2 === 0 ? 'rounded-br-md' : 'rounded-bl-md'} bg-white/[0.06] border border-white/[0.06]`}>
                     {i % 2 !== 0 && (
                       <div className="h-2.5 bg-white/[0.06] rounded w-1/3 mb-2"></div>
@@ -369,9 +546,9 @@ const ChatWindow = ({ conversation, onBack, onViewProfile, isOnline, otherUser }
               const pName = person.fullName || person.username;
 
               return (
-                <div key={inv._id} className="py-2">
-                  <div className={`flex ${isMyInvite ? 'justify-end' : 'justify-start'}`}>
-                    <div className="w-full max-w-[85%] md:max-w-[75%]">
+                <div key={inv._id} className="py-2 w-full">
+                  <div className={`flex w-full ${isMyInvite ? 'justify-end' : 'justify-start'}`}>
+                    <div className="w-full max-w-[85%] md:max-w-[70%]">
                       <div className={`relative p-3 rounded-2xl ${
                         isMyInvite
                           ? 'bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/15 rounded-br-md'
@@ -492,6 +669,7 @@ const ChatWindow = ({ conversation, onBack, onViewProfile, isOnline, otherUser }
             {messages.map((msg, idx) => {
             const isOwn = String(msg.sender?._id ?? msg.sender?.id ?? msg.sender) === String(currentUserId);
             const isOptimistic = String(msg._id).startsWith('opt-');
+            const isEditing = editingMessageId === msg._id;
 
             return (
               <div key={msg._id}>
@@ -504,10 +682,12 @@ const ChatWindow = ({ conversation, onBack, onViewProfile, isOnline, otherUser }
                     <div className="flex-1 h-px bg-white/[0.06]"></div>
                   </div>
                 )}
-                <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'} message-item`}>
-                  <div className="group relative max-w-[75%] md:max-w-[65%]">
+                <div className={`flex w-full ${isOwn ? 'justify-end' : 'justify-start'} message-item`}>
+                  <div className="group relative max-w-[80%] md:max-w-[65%]">
                     <div
                       className={`relative p-2.5 rounded-2xl ${
+                        isEditing ? 'border-2 border-indigo-400/40' : ''
+                      } ${
                         isOwn
                           ? 'bg-gradient-to-br from-indigo-500/25 to-purple-500/25 border border-indigo-500/20 text-white rounded-br-md'
                           : 'bg-white/[0.06] border border-white/10 text-slate-200 rounded-bl-md'
@@ -518,26 +698,76 @@ const ChatWindow = ({ conversation, onBack, onViewProfile, isOnline, otherUser }
                           {msg.sender?.fullName || msg.sender?.username || other?.fullName || other?.username}
                         </div>
                       )}
-                      <div className="text-sm whitespace-pre-wrap break-words leading-relaxed">{msg.text}</div>
+                      {isEditing ? (
+                        <div className="flex flex-col gap-2">
+                          <textarea
+                            value={editText}
+                            onChange={(e) => setEditText(e.target.value)}
+                            onKeyDown={handleEditKeyDown}
+                            className="w-full glow-input rounded-xl px-3 py-2 text-sm resize-none min-h-[60px] bg-[#0a0e1a]/80"
+                            autoFocus
+                          />
+                          <div className="flex items-center gap-2 justify-end">
+                            <button
+                              onClick={handleCancelEdit}
+                              className="px-3 py-1.5 rounded-lg bg-white/[0.08] hover:bg-white/[0.14] text-slate-300 text-xs font-semibold transition-all border border-white/[0.08]"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={handleSaveEdit}
+                              disabled={!editText.trim()}
+                              className="px-3 py-1.5 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 text-xs font-semibold transition-all border border-indigo-500/30 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+                            >
+                              <Save className="w-3 h-3" /> Save
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-sm whitespace-pre-wrap break-words leading-relaxed">{msg.text}</div>
+                      )}
                       <div className={`flex items-center gap-1 mt-1.5 ${isOwn ? 'justify-end' : 'justify-start'}`}>
                         <span className={`text-[9px] ${isOwn ? 'text-indigo-300/50' : 'text-slate-500'}`}>
                           {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
+                        {msg.isEdited && (
+                          <span className="text-[8px] text-slate-500 italic">(edited)</span>
+                        )}
                         {isOptimistic && (
                           <Clock className="w-2.5 h-2.5 text-indigo-300/50" />
                         )}
                       </div>
                     </div>
                     {/* Hover actions */}
-                    <div className={`absolute top-1 ${isOwn ? 'left-0 -translate-x-full pl-1' : 'right-0 translate-x-full pr-1'} opacity-0 group-hover:opacity-100 transition-opacity flex gap-0.5`}>
-                      <button
-                        onClick={() => handleCopy(msg.text, msg._id)}
-                        className="p-1 rounded-md bg-white/[0.08] hover:bg-white/[0.14] text-slate-400 hover:text-white transition-all border border-white/[0.06]"
-                        title="Copy"
-                      >
-                        {copiedId === msg._id ? <CheckCheck className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                      </button>
-                    </div>
+                    {!isEditing && (
+                      <div className={`absolute top-1 ${isOwn ? 'left-0 -translate-x-full pl-1' : 'right-0 translate-x-full pr-1'} opacity-0 group-hover:opacity-100 transition-opacity flex gap-0.5`}>
+                        <button
+                          onClick={() => handleCopy(msg.text, msg._id)}
+                          className="p-1 rounded-md bg-white/[0.08] hover:bg-white/[0.14] text-slate-400 hover:text-white transition-all border border-white/[0.06]"
+                          title="Copy"
+                        >
+                          {copiedId === msg._id ? <CheckCheck className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                        </button>
+                        {isOwn && !isOptimistic && (
+                          <>
+                            <button
+                              onClick={() => handleEditMessage(msg)}
+                              className="p-1 rounded-md bg-white/[0.08] hover:bg-white/[0.14] text-slate-400 hover:text-indigo-300 transition-all border border-white/[0.06]"
+                              title="Edit"
+                            >
+                              <Edit3 className="w-3 h-3" />
+                            </button>
+                            <button
+                              onClick={() => setDeleteConfirmMsgId(msg._id)}
+                              className="p-1 rounded-md bg-white/[0.08] hover:bg-white/[0.14] text-slate-400 hover:text-red-400 transition-all border border-white/[0.06]"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -548,7 +778,7 @@ const ChatWindow = ({ conversation, onBack, onViewProfile, isOnline, otherUser }
 
         {/* Typing indicator */}
         {typing && (
-          <div className="flex justify-start message-item">
+          <div className="flex w-full justify-start message-item">
             <div className="bg-white/[0.06] border border-white/10 rounded-2xl rounded-bl-md p-3 flex items-center gap-2">
               <div
                 className="w-5 h-5 rounded-md flex items-center justify-center text-[8px] font-bold text-white shrink-0"
@@ -575,36 +805,101 @@ const ChatWindow = ({ conversation, onBack, onViewProfile, isOnline, otherUser }
       {showScrollBtn && (
         <button
           onClick={() => scrollToBottom()}
-          className="absolute bottom-20 right-6 z-10 p-2 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/30 transition-all shadow-lg backdrop-blur-md"
+          className="absolute bottom-16 right-4 z-10 p-1.5 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/30 transition-all shadow-lg backdrop-blur-md"
         >
           <ChevronDown className="w-4 h-4" />
         </button>
       )}
 
       {/* Input */}
-      <form onSubmit={handleSend} className="p-3 border-t border-white/10 shrink-0 flex gap-2 bg-[#0a0e1a]/80 backdrop-blur-md">
+      <form onSubmit={handleSend} className="w-full p-2.5 md:p-3 lg:p-4 border-t border-white/10 shrink-0 flex gap-2 md:gap-3 items-end bg-[#0a0e1a]/80 backdrop-blur-md">
         <textarea
           ref={inputRef}
           value={newMessage}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
-          placeholder="Type a message..."
+          placeholder={blockStatus.blockedByMe || blockStatus.blockedMe ? 'Chat is unavailable' : 'Type a message...'}
           rows={1}
-          className="flex-1 glow-input rounded-xl px-4 py-2.5 text-sm resize-none max-h-32 min-h-[40px]"
+          disabled={blockStatus.blockedByMe || blockStatus.blockedMe}
+          className="flex-1 glow-input rounded-xl px-4 py-3 md:py-3.5 text-sm resize-none max-h-32 min-h-[44px] disabled:opacity-30 disabled:cursor-not-allowed"
           style={{ height: 'auto' }}
           onInput={(e) => {
             e.target.style.height = 'auto';
             e.target.style.height = Math.min(e.target.scrollHeight, 128) + 'px';
           }}
         />
-        <button
-          type="submit"
-          disabled={!newMessage.trim()}
-          className="self-end p-2.5 rounded-xl glow-button disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-        >
-          <Send className="w-4 h-4" />
-        </button>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <EmojiPickerButton
+            onEmojiSelect={handleEmojiSelect}
+            disabled={blockStatus.blockedByMe || blockStatus.blockedMe}
+          />
+          <button
+            type="submit"
+            disabled={!newMessage.trim() || blockStatus.blockedByMe || blockStatus.blockedMe}
+            className="p-3 rounded-xl glow-button disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+          >
+            <Send className="w-4 h-4" />
+          </button>
+        </div>
       </form>
+
+      {/* Block Confirmation */}
+      {showBlockConfirm && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-md animate-fadeIn px-4">
+          <div className="metallic-panel border-red-500/20 p-6 rounded-2xl shadow-2xl max-w-sm w-full relative">
+            <div className="w-12 h-12 mx-auto mb-4 rounded-2xl bg-red-500/15 border border-red-500/25 flex items-center justify-center">
+              <ShieldOff className="w-6 h-6 text-red-400" />
+            </div>
+            <h3 className="text-lg font-bold text-white text-center mb-2">Block User</h3>
+            <p className="text-sm text-slate-400 text-center mb-6">
+              Block this user? They will no longer be able to send you personal messages.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowBlockConfirm(false)}
+                className="flex-1 py-3 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-slate-300 font-bold text-sm border border-white/[0.08] transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleBlock}
+                className="flex-1 py-3 rounded-xl bg-red-500 hover:bg-red-400 text-white font-bold text-sm border border-red-400/30 shadow-lg shadow-red-500/20 transition-all"
+              >
+                Block
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Unblock Confirmation */}
+      {showUnblockConfirm && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-md animate-fadeIn px-4">
+          <div className="metallic-panel border-amber-500/20 p-6 rounded-2xl shadow-2xl max-w-sm w-full relative">
+            <div className="w-12 h-12 mx-auto mb-4 rounded-2xl bg-amber-500/15 border border-amber-500/25 flex items-center justify-center">
+              <Shield className="w-6 h-6 text-amber-400" />
+            </div>
+            <h3 className="text-lg font-bold text-white text-center mb-2">Unblock User</h3>
+            <p className="text-sm text-slate-400 text-center mb-6">
+              Unblock this user? They will be able to message you again.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowUnblockConfirm(false)}
+                className="flex-1 py-3 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-slate-300 font-bold text-sm border border-white/[0.08] transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUnblock}
+                className="flex-1 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-white font-bold text-sm border border-amber-400/30 shadow-lg shadow-amber-500/20 transition-all"
+              >
+                Unblock
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Invite Confirmation */}
       {deleteConfirmInviteId && (
@@ -637,6 +932,49 @@ const ChatWindow = ({ conversation, onBack, onViewProfile, isOnline, otherUser }
                 Delete
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Message Confirmation */}
+      {deleteConfirmMsgId && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-md animate-fadeIn px-4">
+          <div className="metallic-panel border-red-500/20 p-6 rounded-2xl shadow-2xl max-w-sm w-full relative">
+            <div className="w-12 h-12 mx-auto mb-4 rounded-2xl bg-red-500/15 border border-red-500/25 flex items-center justify-center">
+              <AlertCircle className="w-6 h-6 text-red-400" />
+            </div>
+            <h3 className="text-lg font-bold text-white text-center mb-2">Delete Message</h3>
+            <p className="text-sm text-slate-400 text-center mb-6">
+              Permanently delete this message? This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteConfirmMsgId(null)}
+                className="flex-1 py-3 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-slate-300 font-bold text-sm border border-white/[0.08] transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteMessage}
+                className="flex-1 py-3 rounded-xl bg-red-500 hover:bg-red-400 text-white font-bold text-sm border border-red-400/30 shadow-lg shadow-red-500/20 transition-all"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <div className="fixed bottom-6 md:bottom-10 left-1/2 transform -translate-x-1/2 z-[100] animate-fadeIn px-4 w-full md:w-auto">
+          <div className={`flex items-center gap-3 px-4 md:px-5 py-2.5 md:py-3 rounded-full shadow-2xl backdrop-blur-md border text-sm ${
+            toast.type === 'error'
+              ? 'bg-red-500/20 border-red-500/30 text-red-300'
+              : 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300'
+          }`}>
+            {toast.type === 'error' ? <AlertCircle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
+            <span className="font-semibold text-sm tracking-wide">{toast.message}</span>
           </div>
         </div>
       )}

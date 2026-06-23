@@ -2,6 +2,7 @@ const Room = require('../models/Room');
 const User = require('../models/User');
 const DirectMessage = require('../models/DirectMessage');
 const Conversation = require('../models/Conversation');
+const BlockedUser = require('../models/BlockedUser');
 
 const roomUsers = {}; // { roomId: [{ username, socketId }] } — active connections only (in-memory)
 const roomStates = {}; // { roomId: { code: string, language: string, messages: Array, strokes: Array } } - active room state cache
@@ -484,6 +485,26 @@ const socketHandler = (io) => {
 
     socket.on('direct-message', async ({ conversationId, text, senderId, recipientId }) => {
       try {
+        // Check block status: if either side blocked the other, reject
+        const [blockedByRecipient, blockedBySender] = await Promise.all([
+          BlockedUser.findOne({ blocker: recipientId, blocked: senderId }),
+          BlockedUser.findOne({ blocker: senderId, blocked: recipientId }),
+        ]);
+        if (blockedByRecipient) {
+          socket.emit('direct-message-blocked', {
+            conversationId,
+            message: 'You cannot send messages to this user.',
+          });
+          return;
+        }
+        if (blockedBySender) {
+          socket.emit('direct-message-blocked', {
+            conversationId,
+            message: 'Unblock this user to send messages.',
+          });
+          return;
+        }
+
         const msg = new DirectMessage({ conversation: conversationId, sender: senderId, text });
         await msg.save();
 
@@ -506,6 +527,47 @@ const socketHandler = (io) => {
         socket.to(`dm:${conversationId}`).emit('direct-message', plain);
       } catch (err) {
         console.error('Error handling direct message:', err.message);
+      }
+    });
+
+    socket.on('direct-message-edit', async ({ conversationId, messageId, text }) => {
+      try {
+        const msg = await DirectMessage.findById(messageId);
+        if (!msg) return;
+        // Verify sender owns this message
+        const userId = socket.data.userId;
+        if (msg.sender.toString() !== userId) return;
+
+        msg.text = text;
+        msg.isEdited = true;
+        await msg.save();
+
+        io.to(`dm:${conversationId}`).emit('direct-message-edited', {
+          _id: String(msg._id),
+          text: msg.text,
+          isEdited: msg.isEdited,
+          conversation: String(msg.conversation),
+        });
+      } catch (err) {
+        console.error('Error editing direct message:', err.message);
+      }
+    });
+
+    socket.on('direct-message-delete', async ({ conversationId, messageId }) => {
+      try {
+        const msg = await DirectMessage.findById(messageId);
+        if (!msg) return;
+        const userId = socket.data.userId;
+        if (msg.sender.toString() !== userId) return;
+
+        await DirectMessage.findByIdAndDelete(messageId);
+
+        io.to(`dm:${conversationId}`).emit('direct-message-deleted', {
+          _id: String(messageId),
+          conversation: String(msg.conversation),
+        });
+      } catch (err) {
+        console.error('Error deleting direct message:', err.message);
       }
     });
 

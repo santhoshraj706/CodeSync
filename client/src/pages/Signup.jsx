@@ -2,7 +2,7 @@ import { useState, useContext } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import api from '../utils/api';
-import { UserPlus, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { UserPlus, AlertCircle, Eye, EyeOff, Loader2 } from 'lucide-react';
 import NeonWireframeBackground from '../components/NeonWireframeBackground';
 
 const Signup = () => {
@@ -11,18 +11,22 @@ const Signup = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
     try {
       const res = await api.post('/auth/signup', { username, email, password });
       login(res.data.token, res.data.user);
       navigate('/dashboard');
     } catch (err) {
       setError(err.response?.data?.message || 'Signup failed');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -116,9 +120,11 @@ const Signup = () => {
           <div className="animate-fadeIn animate-delay-300 pt-4">
             <button
               type="submit"
-              className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 border border-emerald-400/30 shadow-[0_4px_20px_rgba(16,185,129,0.3)] text-white font-bold p-4 rounded-xl text-lg tracking-wide flex items-center justify-center gap-2 group transition-all hover:-translate-y-0.5 shine-hover"
+              disabled={loading}
+              className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 border border-emerald-400/30 shadow-[0_4px_20px_rgba(16,185,129,0.3)] text-white font-bold p-4 rounded-xl text-lg tracking-wide flex items-center justify-center gap-2 group transition-all hover:-translate-y-0.5 shine-hover disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Sign Up <UserPlus className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <UserPlus className="w-5 h-5 group-hover:translate-x-1 transition-transform" />}
+              {loading ? 'Creating account...' : 'Sign Up'}
             </button>
           </div>
         </form>

@@ -256,9 +256,8 @@ CodeSync/
 ### Authentication (`/api/auth`)
 | Method | Route | Description |
 |--------|-------|-------------|
-| POST | `/register` | Create a new account |
+| POST | `/signup` | Create a new account |
 | POST | `/login` | Log in to existing account |
-| GET | `/me` | Get current user profile |
 
 ### Profile (`/api/profile`)
 | Method | Route | Description |

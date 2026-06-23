@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { SocketContext } from '../context/SocketContext';
 import api from '../utils/api';
@@ -13,7 +13,7 @@ import RoomInviteList from '../components/RoomInviteList';
 import SentRoomInviteList from '../components/SentRoomInviteList';
 import {
   ArrowLeft, ArrowRight, MessageCircle, UserPlus, CheckCircle2, AlertCircle,
-  Send, Inbox, Users, Loader2, Search, LogIn, DoorOpen
+  Send, Inbox, Users, Loader2, Search, LogIn, DoorOpen, Ban, ShieldOff
 } from 'lucide-react';
 
 const SKELETON_ITEMS = [1, 2, 3, 4, 5];
@@ -22,6 +22,7 @@ const Messages = () => {
   const { user } = useContext(AuthContext);
   const socket = useContext(SocketContext);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const currentUserId = user?._id ?? user?.id;
 
   const [activeTab, setActiveTab] = useState('messages');
@@ -37,6 +38,8 @@ const Messages = () => {
   const [inviteFromDrawer, setInviteFromDrawer] = useState(null);
   const [sentInvites, setSentInvites] = useState([]);
   const [sentInvitesLoading, setSentInvitesLoading] = useState(true);
+  const [blockedUsers, setBlockedUsers] = useState([]);
+  const [blockedUsersLoading, setBlockedUsersLoading] = useState(false);
 
   const showToast = (message, type = 'success', actionRoomId = null) => {
     setToast({ message, type, actionRoomId });
@@ -47,16 +50,28 @@ const Messages = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const [convRes, incomingRes, outgoingRes, sentInvitesRes] = await Promise.all([
+        const [convRes, incomingRes, outgoingRes, sentInvitesRes, blockRes] = await Promise.all([
           api.get('/conversations'),
           api.get('/chat-requests/incoming'),
           api.get('/chat-requests/outgoing'),
           api.get('/room-invites/outgoing'),
+          api.get('/blocks'),
         ]);
-        setConversations(convRes.data);
+        const convs = convRes.data;
+        setConversations(convs);
         setIncomingRequests(incomingRes.data);
         setOutgoingRequests(outgoingRes.data);
         setSentInvites(sentInvitesRes.data || []);
+        setBlockedUsers(blockRes.data);
+
+        // Auto-select or use URL conversationId
+        const urlConvId = searchParams.get('conversationId');
+        if (urlConvId) {
+          const match = convs.find(c => c._id === urlConvId);
+          if (match) setActiveConversation(match);
+        } else if (convs.length > 0 && window.innerWidth >= 768) {
+          setActiveConversation(convs[0]);
+        }
       } catch (err) {
         console.error('Failed to load messages data:', err);
       } finally {
@@ -103,6 +118,17 @@ const Messages = () => {
     return () => socket.off('invite-accepted', handler);
   }, [socket, showToast]);
 
+  useEffect(() => {
+    if (!socket) return;
+    const refreshBlocks = () => { api.get('/blocks').then(r => setBlockedUsers(r.data)).catch(() => {}); };
+    socket.on('user-blocked', refreshBlocks);
+    socket.on('user-unblocked', refreshBlocks);
+    return () => {
+      socket.off('user-blocked', refreshBlocks);
+      socket.off('user-unblocked', refreshBlocks);
+    };
+  }, [socket]);
+
   const hasReachedConvLimit = useMemo(() => {
     if (!conversations.length || !profileUser) return false;
     return conversations.some(conv =>
@@ -120,6 +146,16 @@ const Messages = () => {
         return next;
       });
     } catch {}
+  };
+
+  const handleUnblock = async (userId) => {
+    try {
+      await api.delete(`/blocks/${userId}`);
+      setBlockedUsers(prev => prev.filter(u => (u._id ?? u.id) !== userId));
+      showToast('User unblocked', 'success');
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Failed to unblock', 'error');
+    }
   };
 
   const handleAcceptRequest = async (requestId) => {
@@ -214,9 +250,11 @@ const Messages = () => {
       <div className="bg-ring"></div>
       <div className="bg-spotlight"></div>
 
-      <div className="flex-1 flex flex-col relative z-10 max-w-6xl mx-auto w-full p-2 md:p-4 gap-3 overflow-hidden">
+      <div className="fixed inset-0 bg-black/35 pointer-events-none z-[1]"></div>
+
+      <div className="flex-1 flex flex-col relative z-10 w-full p-1 md:p-2 lg:p-3 gap-2 overflow-hidden">
         {/* Header */}
-        <div className="metallic-panel p-3 md:p-4 rounded-2xl flex items-center justify-between shrink-0">
+        <div className="metallic-panel p-2 md:p-2.5 rounded-2xl flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate('/dashboard')}
@@ -239,30 +277,37 @@ const Messages = () => {
         </div>
 
         {/* Main layout */}
-        <div className="flex-1 flex gap-3 min-h-0">
+        <div className="flex-1 flex gap-2 min-h-0">
           {/* Left sidebar */}
-          <div className="w-full md:w-80 lg:w-96 shrink-0 flex flex-col min-h-0">
+          <div className="w-full md:w-72 lg:w-80 shrink-0 flex flex-col min-h-0">
             {/* Tabs */}
-            <div className="flex bg-white/[0.06] rounded-xl p-0.5 border border-white/[0.06] mb-2 shrink-0">
+            <div className="flex bg-white/[0.06] rounded-lg p-0.5 border border-white/[0.06] mb-1.5 shrink-0">
               <button
-                onClick={() => { setActiveTab('messages'); setActiveConversation(null); }}
-                className={`flex-1 px-3 py-2 rounded-[9px] flex items-center justify-center text-xs font-bold transition-all gap-1.5 ${
+                onClick={() => {
+                  setActiveTab('messages');
+                  if (!activeConversation && conversations.length > 0 && window.innerWidth >= 768) {
+                    setActiveConversation(conversations[0]);
+                  } else if (window.innerWidth < 768) {
+                    setActiveConversation(null);
+                  }
+                }}
+                className={`flex-1 px-2 py-1.5 rounded-[7px] flex items-center justify-center text-[10px] font-bold transition-all gap-1 ${
                   activeTab === 'messages'
                     ? 'bg-indigo-500/20 text-indigo-200 shadow-sm border border-indigo-500/20'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                <MessageCircle className="w-3.5 h-3.5" /> Chats
+                <MessageCircle className="w-3 h-3" /> Chats
               </button>
               <button
                 onClick={() => { setActiveTab('incoming'); setActiveConversation(null); }}
-                className={`flex-1 px-3 py-2 rounded-[9px] flex items-center justify-center text-xs font-bold transition-all gap-1.5 ${
+                className={`flex-1 px-2 py-1.5 rounded-[7px] flex items-center justify-center text-[10px] font-bold transition-all gap-1 ${
                   activeTab === 'incoming'
                     ? 'bg-indigo-500/20 text-indigo-200 shadow-sm border border-indigo-500/20'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                <Inbox className="w-3.5 h-3.5" /> Incoming
+                <Inbox className="w-3 h-3" /> Incoming
                 {incomingRequests.length > 0 && (
                   <span className="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
                     {incomingRequests.length}
@@ -271,28 +316,43 @@ const Messages = () => {
               </button>
               <button
                 onClick={() => { setActiveTab('invites'); setActiveConversation(null); }}
-                className={`flex-1 px-3 py-2 rounded-[9px] flex items-center justify-center text-xs font-bold transition-all gap-1.5 ${
+                className={`flex-1 px-2 py-1.5 rounded-[7px] flex items-center justify-center text-[10px] font-bold transition-all gap-1 ${
                   activeTab === 'invites'
                     ? 'bg-indigo-500/20 text-indigo-200 shadow-sm border border-indigo-500/20'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                <DoorOpen className="w-3.5 h-3.5" /> Invites
+                <DoorOpen className="w-3 h-3" /> Invites
               </button>
               <button
                 onClick={() => { setActiveTab('outgoing'); setActiveConversation(null); }}
-                className={`flex-1 px-3 py-2 rounded-[9px] flex items-center justify-center text-xs font-bold transition-all gap-1.5 ${
+                className={`flex-1 px-2 py-1.5 rounded-[7px] flex items-center justify-center text-[10px] font-bold transition-all gap-1 ${
                   activeTab === 'outgoing'
                     ? 'bg-indigo-500/20 text-indigo-200 shadow-sm border border-indigo-500/20'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                <Send className="w-3.5 h-3.5" /> Sent
+                <Send className="w-3 h-3" /> Sent
+              </button>
+              <button
+                onClick={() => { setActiveTab('blocked'); setActiveConversation(null); }}
+                className={`flex-1 px-2 py-1.5 rounded-[7px] flex items-center justify-center text-[10px] font-bold transition-all gap-1 ${
+                  activeTab === 'blocked'
+                    ? 'bg-indigo-500/20 text-indigo-200 shadow-sm border border-indigo-500/20'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Ban className="w-3 h-3" /> Blocked
+                {blockedUsers.length > 0 && (
+                  <span className="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                    {blockedUsers.length}
+                  </span>
+                )}
               </button>
             </div>
 
             {/* Content */}
-            <div className="metallic-panel flex-1 rounded-2xl p-3 overflow-y-auto min-h-0">
+            <div className="metallic-panel flex-1 rounded-xl p-2 overflow-y-auto min-h-0">
               {loading ? (
                 <div className="space-y-2">
                   {SKELETON_ITEMS.map(i => (
@@ -378,13 +438,56 @@ const Messages = () => {
                       />
                     </>
                   )}
+                  {activeTab === 'blocked' && (
+                    <>
+                      {blockedUsers.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center h-full text-center py-8">
+                          <div className="w-12 h-12 rounded-2xl bg-white/[0.04] flex items-center justify-center mx-auto mb-3 border border-white/[0.06]">
+                            <Ban className="w-5 h-5 text-slate-600" />
+                          </div>
+                          <p className="text-sm text-slate-500">No blocked users</p>
+                          <p className="text-xs text-slate-600 mt-1">Block users to prevent unwanted messages</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-1">
+                          <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-2 flex items-center gap-1.5 px-1">
+                            <Ban className="w-3 h-3" /> Blocked Users ({blockedUsers.length})
+                          </div>
+                          {blockedUsers.map(u => {
+                            const uid = u._id ?? u.id;
+                            return (
+                              <div key={uid} className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-white/[0.04] transition-all group">
+                                <div
+                                  className="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold text-white shrink-0 border border-white/10"
+                                  style={{ backgroundColor: u.avatarColor || '#6366f1' }}
+                                >
+                                  {(u.fullName || u.username || '?').charAt(0).toUpperCase()}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-sm font-medium text-white truncate">{u.fullName || u.username}</div>
+                                  <div className="text-[10px] text-slate-500">@{u.username}</div>
+                                </div>
+                                <button
+                                  onClick={() => handleUnblock(uid)}
+                                  className="p-2 rounded-lg text-slate-400 hover:text-red-300 hover:bg-red-500/10 transition-all opacity-0 group-hover:opacity-100 border border-transparent hover:border-red-500/20"
+                                  title="Unblock"
+                                >
+                                  <ShieldOff className="w-4 h-4" />
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </>
+                  )}
                 </>
               )}
             </div>
           </div>
 
           {/* Right chat window */}
-          <div className="hidden md:flex flex-1 metallic-panel rounded-2xl overflow-hidden relative">
+          <div className="hidden md:flex flex-1 min-w-0 metallic-panel rounded-2xl overflow-hidden relative bg-[#0a0e1a]/50">
             {activeConversation ? (
               <ChatWindow
                 conversation={activeConversation}
@@ -395,20 +498,30 @@ const Messages = () => {
               />
             ) : (
               <div className="flex items-center justify-center flex-1">
-                <div className="text-center px-6">
-                  <div className="w-16 h-16 rounded-2xl bg-white/[0.04] flex items-center justify-center mx-auto mb-4 border border-white/[0.06]">
-                    <MessageCircle className="w-7 h-7 text-slate-600" />
+                <div className="text-center px-8 max-w-sm">
+                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 flex items-center justify-center mx-auto mb-5 border border-indigo-500/20 shadow-[0_0_30px_rgba(99,102,241,0.1)]">
+                    <MessageCircle className="w-8 h-8 text-indigo-400/60" />
                   </div>
-                  <p className="text-slate-400 text-sm font-medium">No conversation selected</p>
-                  <p className="text-xs text-slate-600 mt-1.5 max-w-[240px] mx-auto leading-relaxed">
-                    Choose a chat from the sidebar or find new users to connect with
+                  <p className="text-slate-300 text-base font-semibold">No conversation selected</p>
+                  <p className="text-xs text-slate-500 mt-2 max-w-[280px] mx-auto leading-relaxed">
+                    Choose a chat from the sidebar or discover new users to connect and collaborate with.
                   </p>
-                  <button
-                    onClick={() => navigate('/discover')}
-                    className="mt-4 px-4 py-2 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 rounded-xl transition-all text-xs font-bold border border-indigo-500/20 inline-flex items-center gap-1.5"
-                  >
-                    <Users className="w-3.5 h-3.5" /> Find Users
-                  </button>
+                  <div className="flex items-center justify-center gap-3 mt-6">
+                    <button
+                      onClick={() => navigate('/discover')}
+                      className="px-5 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:from-indigo-400 hover:to-purple-500 rounded-xl transition-all text-xs font-bold border border-indigo-400/20 shadow-[0_4px_15px_rgba(99,102,241,0.3)] hover:shadow-[0_6px_20px_rgba(99,102,241,0.4)] inline-flex items-center gap-1.5"
+                    >
+                      <Users className="w-3.5 h-3.5" /> Find Users
+                    </button>
+                    {conversations.length > 0 && (
+                      <button
+                        onClick={() => setActiveConversation(conversations[0])}
+                        className="px-4 py-2.5 bg-white/[0.06] text-slate-300 hover:bg-white/[0.1] hover:text-white rounded-xl transition-all text-xs font-semibold border border-white/[0.08] inline-flex items-center gap-1.5"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5" /> Open Chats
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             )}

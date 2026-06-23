@@ -28,7 +28,7 @@ router.get('/', auth, async (req, res) => {
     res.json(user);
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Server Error');
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -95,7 +95,7 @@ router.put('/', auth, async (req, res) => {
       const field = Object.keys(err.keyPattern)[0];
       return res.status(400).json({ message: `${field === 'username' ? 'Username' : 'Email'} is already taken` });
     }
-    res.status(500).send('Server Error');
+    res.status(500).json({ message: 'Server error' });
   }
 });
 

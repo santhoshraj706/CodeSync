@@ -32,7 +32,9 @@ Under the **Environment** tab, click **Add Environment Variable** and insert:
 *   `PORT` = `5000`
 *   `MONGO_URI` = `your_mongodb_atlas_connection_string`
 *   `JWT_SECRET` = `your_jwt_secret_key`
-*   `JUDGE0_API_KEY` = *(optional, not used currently)*
+*   `GEMINI_API_KEY` = `your_google_gemini_api_key`
+*   `JUDGE0_API_KEY` = *(optional, for authenticated Judge0)*
+*   `CLIENT_URL` = `https://codesync-frontend.vercel.app` *(Your Vercel frontend URL)*
 
 ### Step 4: Deploy
 Click **Deploy Web Service**. Once deployment completes, copy the generated service URL (e.g., `https://codesync-backend.onrender.com`).

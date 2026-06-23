@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, MessageCircle, Send, LogIn, User, Loader2, GraduationCap, Award } from 'lucide-react';
+import { X, MessageCircle, Send, LogIn, User, Loader2, GraduationCap, Award, Shield, ShieldOff, Ban, CheckCircle2, AlertCircle } from 'lucide-react';
 import api from '../utils/api';
 
 const AVATAR_COLORS = [
@@ -21,15 +21,57 @@ const generateAvatarColor = (name) => {
 const ProfileDrawer = ({ user, onClose, onSendRequest, onMessage, onInvite, requestSent, isFriend }) => {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [blockStatus, setBlockStatus] = useState({ blockedByMe: false, blockedMe: false });
+  const [showBlockConfirm, setShowBlockConfirm] = useState(false);
+  const [showUnblockConfirm, setShowUnblockConfirm] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  const showToast = (message, type = 'error') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   useEffect(() => {
     if (!user?._id) return;
     setLoading(true);
-    api.get(`/users/${user._id}/public`)
-      .then(res => setProfile(res.data))
-      .catch(() => setProfile(user))
+    Promise.all([
+      api.get(`/users/${user._id}/public`),
+      api.get(`/blocks/status/${user._id}`),
+    ])
+      .then(([profileRes, blockRes]) => {
+        setProfile(profileRes.data);
+        setBlockStatus(blockRes.data);
+      })
+      .catch(() => {
+        setProfile(user);
+        setBlockStatus({ blockedByMe: false, blockedMe: false });
+      })
       .finally(() => setLoading(false));
   }, [user]);
+
+  const targetId = user?._id ?? user?.id;
+
+  const handleBlock = async () => {
+    try {
+      await api.post(`/blocks/${targetId}`);
+      setBlockStatus(prev => ({ ...prev, blockedByMe: true }));
+      showToast('User blocked', 'success');
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Failed to block', 'error');
+    }
+    setShowBlockConfirm(false);
+  };
+
+  const handleUnblock = async () => {
+    try {
+      await api.delete(`/blocks/${targetId}`);
+      setBlockStatus(prev => ({ ...prev, blockedByMe: false }));
+      showToast('User unblocked', 'success');
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Failed to unblock', 'error');
+    }
+    setShowUnblockConfirm(false);
+  };
 
   const p = profile || user;
   const avatarColor = p?.avatarColor || generateAvatarColor(p?.fullName || p?.username);
@@ -123,6 +165,95 @@ const ProfileDrawer = ({ user, onClose, onSendRequest, onMessage, onInvite, requ
               >
                 <User className="w-4 h-4" /> Full Profile
               </button>
+              {!blockStatus.blockedMe && (
+                blockStatus.blockedByMe ? (
+                  <button
+                    onClick={() => setShowUnblockConfirm(true)}
+                    className="w-full py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-bold flex items-center justify-center gap-2 hover:bg-amber-500/20 transition-all"
+                  >
+                    <ShieldOff className="w-4 h-4" /> Unblock User
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setShowBlockConfirm(true)}
+                    className="w-full py-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold flex items-center justify-center gap-2 hover:bg-red-500/20 transition-all"
+                  >
+                    <Shield className="w-4 h-4" /> Block User
+                  </button>
+                )
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Block Confirmation */}
+        {showBlockConfirm && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/60 backdrop-blur-md animate-fadeIn p-4">
+            <div className="metallic-panel border-red-500/20 p-6 rounded-2xl shadow-2xl max-w-sm w-full">
+              <div className="w-12 h-12 mx-auto mb-4 rounded-2xl bg-red-500/15 border border-red-500/25 flex items-center justify-center">
+                <ShieldOff className="w-6 h-6 text-red-400" />
+              </div>
+              <h3 className="text-lg font-bold text-white text-center mb-2">Block User</h3>
+              <p className="text-sm text-slate-400 text-center mb-6">
+                Block {p?.fullName || p?.username}? They will no longer be able to send you messages.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowBlockConfirm(false)}
+                  className="flex-1 py-3 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-slate-300 font-bold text-sm border border-white/[0.08] transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleBlock}
+                  className="flex-1 py-3 rounded-xl bg-red-500 hover:bg-red-400 text-white font-bold text-sm border border-red-400/30 shadow-lg shadow-red-500/20 transition-all"
+                >
+                  Block
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Unblock Confirmation */}
+        {showUnblockConfirm && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/60 backdrop-blur-md animate-fadeIn p-4">
+            <div className="metallic-panel border-amber-500/20 p-6 rounded-2xl shadow-2xl max-w-sm w-full">
+              <div className="w-12 h-12 mx-auto mb-4 rounded-2xl bg-amber-500/15 border border-amber-500/25 flex items-center justify-center">
+                <Shield className="w-6 h-6 text-amber-400" />
+              </div>
+              <h3 className="text-lg font-bold text-white text-center mb-2">Unblock User</h3>
+              <p className="text-sm text-slate-400 text-center mb-6">
+                Unblock {p?.fullName || p?.username}? They will be able to message you again.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowUnblockConfirm(false)}
+                  className="flex-1 py-3 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-slate-300 font-bold text-sm border border-white/[0.08] transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleUnblock}
+                  className="flex-1 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-white font-bold text-sm border border-amber-400/30 shadow-lg shadow-amber-500/20 transition-all"
+                >
+                  Unblock
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Toast */}
+        {toast && (
+          <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-20 animate-fadeIn px-4 w-full">
+            <div className={`flex items-center gap-3 px-4 py-2.5 rounded-full shadow-2xl backdrop-blur-md border text-sm ${
+              toast.type === 'error'
+                ? 'bg-red-500/20 border-red-500/30 text-red-300'
+                : 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300'
+            }`}>
+              {toast.type === 'error' ? <AlertCircle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
+              <span className="font-semibold text-sm tracking-wide">{toast.message}</span>
             </div>
           </div>
         )}

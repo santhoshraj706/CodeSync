@@ -37,7 +37,7 @@ router.post('/', auth, async (req, res) => {
     res.json(populated);
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Server Error');
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -49,7 +49,7 @@ router.get('/incoming', auth, async (req, res) => {
     res.json(requests);
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Server Error');
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -61,7 +61,7 @@ router.get('/outgoing', auth, async (req, res) => {
     res.json(requests);
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Server Error');
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -92,7 +92,7 @@ router.put('/:id/accept', auth, async (req, res) => {
     res.json(populated);
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Server Error');
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -108,7 +108,7 @@ router.put('/:id/reject', auth, async (req, res) => {
     res.json({ message: 'Request rejected' });
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Server Error');
+    res.status(500).json({ message: 'Server error' });
   }
 });
 

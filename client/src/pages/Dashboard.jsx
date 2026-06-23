@@ -39,8 +39,10 @@ import {
   User,
   Settings,
   Users,
-  MessageCircle,
+  UserPlus,
+  MessageCircle, MessageSquare,
 } from 'lucide-react';
+import FrequentCollaborators from '../components/FrequentCollaborators';
 
 const TEMPLATES = [
   { id: 'blank', label: 'Blank Workspace', desc: 'Start from scratch', icon: FileText, color: 'slate' },
@@ -78,6 +80,8 @@ const Dashboard = () => {
   const [confirmDelete, setConfirmDelete] = useState(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const [collaborators, setCollaborators] = useState([]);
+  const [collaboratorsLoading, setCollaboratorsLoading] = useState(false);
 
   const toastTimeoutRef = useRef(null);
 
@@ -115,6 +119,19 @@ const Dashboard = () => {
       setFavoriteRooms(JSON.parse(savedFavorites));
     }
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    setCollaboratorsLoading(true);
+    api.get('/conversations/frequent')
+      .then(res => setCollaborators(res.data.data || []))
+      .catch(err => { console.error('Failed to load collaborators:', err?.response?.data || err.message); setCollaborators([]); })
+      .finally(() => setCollaboratorsLoading(false));
+  }, [user]);
+
+  const handleFrequentMessage = (conversationId) => {
+    navigate(`/messages?conversationId=${conversationId}`);
+  };
 
   useEffect(() => {
     const errorMsg = searchParams.get('error');
@@ -242,6 +259,7 @@ const Dashboard = () => {
 
   const adminRooms = recentRooms.filter((room) => room.admin === userId).length;
   const latestRoom = [...recentRooms].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))[0];
+  const collaboratorsTotalUnread = collaborators.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
 
   const ActivityIcon = ({ action }) => {
     switch (action) {
@@ -302,6 +320,9 @@ const Dashboard = () => {
       <div className="bg-3d-diamond bg-3d-diamond-2" style={{ bottom: '5%', left: '5%' }}></div>
       <div className="bg-3d-diamond bg-3d-diamond-3" style={{ top: '50%', right: '3%' }}></div>
       <div className="bg-3d-triangle bg-3d-triangle-1" style={{ top: '15%', left: '80%' }}></div>
+
+      {/* Readability overlay */}
+      <div className="fixed inset-0 bg-black/30 pointer-events-none z-[1]"></div>
 
       <div className="max-w-6xl mx-auto space-y-5 relative z-10">
 
@@ -385,23 +406,57 @@ const Dashboard = () => {
           )}
         </div>
 
-        {/* ── Discovery Navigation ── */}
-        <div className="flex items-center gap-2 animate-fadeIn animate-delay-100">
-          <button
-            onClick={() => navigate('/discover')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 hover:text-indigo-300 rounded-xl transition-all border border-indigo-500/20 font-bold text-sm shadow-[0_0_15px_rgba(99,102,241,0.1)] hover:shadow-[0_0_20px_rgba(99,102,241,0.2)]"
-          >
-            <Users className="w-4 h-4" /> Find Users
-          </button>
-          <button
-            onClick={() => navigate('/messages')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 hover:text-emerald-300 rounded-xl transition-all border border-emerald-500/20 font-bold text-sm shadow-[0_0_15px_rgba(16,185,129,0.1)] hover:shadow-[0_0_20px_rgba(16,185,129,0.2)]"
-          >
-            <MessageCircle className="w-4 h-4" /> Messages
-          </button>
+        {/* ── Primary Collaboration Actions — enhanced CTAs with gradient borders and glow ── */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-fadeIn animate-delay-100">
+
+          {/* Find Users */}
+          <div className="relative group rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 p-[1px] shadow-[0_0_25px_rgba(99,102,241,0.2)] hover:shadow-[0_0_50px_rgba(99,102,241,0.45)] transition-all duration-500">
+            <button
+              onClick={() => navigate('/discover')}
+              className="w-full rounded-2xl bg-[#0a0e1a] hover:bg-[#0f1326] p-4 sm:p-5 flex items-center gap-4 group/btn transition-all text-left"
+            >
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-indigo-500/5 via-transparent to-purple-500/5 pointer-events-none group-hover/btn:from-indigo-500/10 transition-all"></div>
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500/25 to-purple-500/25 border border-indigo-500/30 flex items-center justify-center shrink-0 shadow-[0_0_20px_rgba(99,102,241,0.25)] group-hover/btn:shadow-[0_0_35px_rgba(99,102,241,0.4)] transition-all relative z-10 group-hover/btn:scale-105">
+                <UserPlus className="w-5 h-5 text-indigo-300" />
+              </div>
+              <div className="relative z-10">
+                <div className="text-sm font-bold text-white group-hover/btn:text-indigo-200 transition-colors">Find Users</div>
+                <div className="text-[10px] text-slate-400 mt-0.5">Discover teammates and start collaborating</div>
+              </div>
+            </button>
+          </div>
+
+          {/* Messages */}
+          <div className="relative group rounded-2xl bg-gradient-to-br from-emerald-500 to-cyan-600 p-[1px] shadow-[0_0_25px_rgba(16,185,129,0.2)] hover:shadow-[0_0_50px_rgba(16,185,129,0.45)] transition-all duration-500">
+            <button
+              onClick={() => navigate('/messages')}
+              className="w-full rounded-2xl bg-[#0a0e1a] hover:bg-[#0f1326] p-4 sm:p-5 flex items-center gap-4 group/btn transition-all text-left"
+            >
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-emerald-500/5 via-transparent to-cyan-500/5 pointer-events-none group-hover/btn:from-emerald-500/10 transition-all"></div>
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500/25 to-cyan-500/25 border border-emerald-500/30 flex items-center justify-center shrink-0 shadow-[0_0_20px_rgba(16,185,129,0.25)] group-hover/btn:shadow-[0_0_35px_rgba(16,185,129,0.4)] transition-all relative z-10 group-hover/btn:scale-105">
+                <MessageCircle className="w-5 h-5 text-emerald-300" />
+                {collaboratorsTotalUnread > 0 && (
+                  <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center border-2 border-[#0a0e1a] shadow-lg shadow-red-500/30">
+                    {collaboratorsTotalUnread > 9 ? '9+' : collaboratorsTotalUnread}
+                  </div>
+                )}
+              </div>
+              <div className="relative z-10">
+                <div className="text-sm font-bold text-white group-hover/btn:text-emerald-200 transition-colors flex items-center gap-2">
+                  Messages
+                  {collaboratorsTotalUnread > 0 && (
+                    <span className="text-[10px] font-bold text-emerald-300 bg-emerald-500/15 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                      {collaboratorsTotalUnread} unread{collaboratorsTotalUnread > 1 ? 's' : ''}
+                    </span>
+                  )}
+                </div>
+                <div className="text-[10px] text-slate-400 mt-0.5">Continue chats and manage requests</div>
+              </div>
+            </button>
+          </div>
         </div>
 
-        {/* ── Main Grid: Left (form) + Right (actions, templates, activity) ── */}
+        {/* ── Main Grid: Left (form + workspaces) + Right (collaborators, actions, templates) ── */}
         <div className="grid lg:grid-cols-5 gap-5 animate-fadeIn animate-delay-100">
 
           {/* ══ LEFT: Create / Join Form + Recent Workspaces ══ */}
@@ -546,7 +601,18 @@ const Dashboard = () => {
               )}
             </div>
 
-            {/* ══ Recent Workspaces (inside left column) ══ */}
+            {/* Frequent Collaborators (mobile only) */}
+            <div className="lg:hidden">
+              <FrequentCollaborators
+                collaborators={collaborators}
+                loading={collaboratorsLoading}
+                onMessageClick={handleFrequentMessage}
+                onFindUsers={() => navigate('/discover')}
+                onOpenMessages={() => navigate('/messages')}
+              />
+            </div>
+
+            {/* ══ Recent Workspaces ══ */}
             <div className="metallic-panel p-5 sm:p-6 rounded-2xl relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent pointer-events-none"></div>
 
@@ -716,8 +782,19 @@ const Dashboard = () => {
 
           </div>
 
-          {/* ══ RIGHT: Quick Actions + Templates + Latest Activity ══ */}
+          {/* ══ RIGHT: Collaborators (desktop) + Quick Actions + Templates ══ */}
           <div className="lg:col-span-2 flex flex-col gap-4">
+
+            {/* Frequent Collaborators (desktop only) */}
+            <div className="hidden lg:block">
+              <FrequentCollaborators
+                collaborators={collaborators}
+                loading={collaboratorsLoading}
+                onMessageClick={handleFrequentMessage}
+                onFindUsers={() => navigate('/discover')}
+                onOpenMessages={() => navigate('/messages')}
+              />
+            </div>
 
             {/* Quick Actions */}
             <div className="metallic-card p-4 rounded-xl border-white/10">
@@ -742,26 +819,6 @@ const Dashboard = () => {
                 >
                   <Copy className="w-4 h-4 text-cyan-400" />
                   <span className="text-[10px] font-bold text-slate-300">Copy Latest</span>
-                </button>
-                <button
-                  onClick={generateRoomId}
-                  className="flex flex-col items-center justify-center gap-1 p-3 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/5 hover:border-purple-500/30 transition-all"
-                  title="Generate a random workspace ID"
-                >
-                  <RefreshCw className="w-4 h-4 text-purple-400" />
-                  <span className="text-[10px] font-bold text-slate-300">Random ID</span>
-                </button>
-                <button
-                  onClick={() => setRoomFilterTab(roomFilterTab === 'pinned' ? 'all' : 'pinned')}
-                  className={`flex flex-col items-center justify-center gap-1 p-3 rounded-xl transition-all border ${
-                    roomFilterTab === 'pinned'
-                      ? 'bg-amber-500/15 border-amber-500/30 text-amber-200'
-                      : 'bg-white/[0.04] hover:bg-white/[0.08] border-white/5 hover:border-amber-500/30'
-                  }`}
-                  title="Toggle favorite filter"
-                >
-                  <Star className={`w-4 h-4 ${roomFilterTab === 'pinned' ? 'fill-current text-amber-400' : 'text-amber-400'}`} />
-                  <span className="text-[10px] font-bold text-slate-300">Favorites</span>
                 </button>
               </div>
             </div>
@@ -796,34 +853,6 @@ const Dashboard = () => {
                   );
                 })}
               </div>
-            </div>
-
-            {/* Latest Activity */}
-            <div className="metallic-card p-4 rounded-xl border-white/10">
-              <h3 className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                <Clock className="w-3 h-3 text-slate-400" /> Latest Activity
-              </h3>
-              {recentActivity.length === 0 ? (
-                <div className="text-center py-5">
-                  <Clock className="w-6 h-6 text-slate-600 mx-auto mb-2" />
-                  <p className="text-[11px] text-slate-500">No activity yet. Create or join a room to get started.</p>
-                </div>
-              ) : (
-                <div className="space-y-1.5">
-                  {recentActivity.map((a) => (
-                    <div key={a.id} className="flex items-center gap-2.5 p-2 rounded-lg bg-white/[0.02] hover:bg-white/[0.04] transition-colors">
-                      <ActivityIcon action={a.action} />
-                      <div className="flex-1 min-w-0">
-                        <span className="text-[11px] text-slate-300 font-medium">
-                          <ActivityLabel action={a.action} />
-                        </span>
-                        <span className="text-[11px] text-slate-500 ml-1.5 font-mono">{a.roomId}</span>
-                      </div>
-                      <span className="text-[9px] text-slate-600 shrink-0">{timeAgo(a.timestamp)}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
 
           </div>

@@ -29,7 +29,54 @@ router.get('/:conversationId', auth, async (req, res) => {
     res.json(messages);
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Server Error');
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Edit a direct message (sender only)
+router.put('/:messageId', auth, async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text || !text.trim()) {
+      return res.status(400).json({ message: 'Message text is required' });
+    }
+
+    const msg = await DirectMessage.findById(req.params.messageId);
+    if (!msg) return res.status(404).json({ message: 'Message not found' });
+
+    if (msg.sender.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized to edit this message' });
+    }
+
+    msg.text = text.trim();
+    msg.isEdited = true;
+    await msg.save();
+
+    const populated = await DirectMessage.findById(msg._id)
+      .populate('sender', 'username fullName avatarColor');
+
+    res.json(populated);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Delete a direct message (sender only)
+router.delete('/:messageId', auth, async (req, res) => {
+  try {
+    const msg = await DirectMessage.findById(req.params.messageId);
+    if (!msg) return res.status(404).json({ message: 'Message not found' });
+
+    if (msg.sender.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized to delete this message' });
+    }
+
+    await DirectMessage.findByIdAndDelete(req.params.messageId);
+    res.json({ message: 'Message deleted' });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ message: 'Server error' });
   }
 });
 

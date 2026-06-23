@@ -95,7 +95,7 @@ router.get('/:roomId/notes', auth, async (req, res) => {
     res.json({ success: true, notes: getNotesOrEmpty(notes) });
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Server Error');
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -141,7 +141,7 @@ router.post('/:roomId/notes', auth, async (req, res) => {
     res.status(201).json({ success: true, notes: populated });
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Server Error');
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -185,7 +185,7 @@ router.put('/:roomId/notes', auth, async (req, res) => {
     res.json({ success: true, notes: populated });
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Server Error');
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -211,7 +211,7 @@ router.delete('/:roomId/notes', auth, async (req, res) => {
     res.json({ success: true, message: 'Session notes reset successfully' });
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Server Error');
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -269,7 +269,7 @@ router.post('/:roomId/notes/tasks', auth, async (req, res) => {
     res.status(201).json({ success: true, notes: populated });
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Server Error');
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -322,7 +322,7 @@ router.put('/:roomId/notes/tasks/:taskId', auth, async (req, res) => {
     res.json({ success: true, notes: populated });
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Server Error');
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -362,7 +362,7 @@ router.patch('/:roomId/notes/tasks/:taskId/status', auth, async (req, res) => {
     res.json({ success: true, notes: populated });
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Server Error');
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -395,7 +395,7 @@ router.delete('/:roomId/notes/tasks/:taskId', auth, async (req, res) => {
     res.json({ success: true, notes: populated });
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Server Error');
+    res.status(500).json({ message: 'Server error' });
   }
 });
 

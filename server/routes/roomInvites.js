@@ -54,7 +54,7 @@ router.post('/', auth, async (req, res) => {
     res.json(populated);
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Server Error');
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -66,7 +66,7 @@ router.get('/incoming', auth, async (req, res) => {
     res.json(invites);
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Server Error');
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -86,7 +86,7 @@ router.get('/between/:userId', auth, async (req, res) => {
     res.json(invites);
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Server Error');
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -98,7 +98,7 @@ router.get('/outgoing', auth, async (req, res) => {
     res.json(invites);
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Server Error');
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -146,7 +146,7 @@ router.put('/:id/accept', auth, async (req, res) => {
     res.json({ message: 'Invite accepted', roomId: invite.roomId, roomPassword: room.roomPassword });
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Server Error');
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -174,7 +174,7 @@ router.delete('/:id', auth, async (req, res) => {
     res.json({ message: 'Invite deleted' });
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Server Error');
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -190,7 +190,7 @@ router.put('/:id/reject', auth, async (req, res) => {
     res.json({ message: 'Invite rejected' });
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Server Error');
+    res.status(500).json({ message: 'Server error' });
   }
 });
 

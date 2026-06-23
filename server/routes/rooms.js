@@ -1,5 +1,5 @@
 const express = require('express');
-const router = Router = express.Router();
+const router = express.Router();
 const Room = require('../models/Room');
 const CodeFile = require('../models/CodeFile');
 const jwt = require('jsonwebtoken');
@@ -88,7 +88,7 @@ router.post('/create', auth, async (req, res) => {
     res.json(room);
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Server Error');
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -135,7 +135,7 @@ router.post('/join', auth, async (req, res) => {
     res.json(room);
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Server Error');
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -155,7 +155,7 @@ router.get('/recent', auth, async (req, res) => {
     res.json(rooms);
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Server Error');
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -223,7 +223,7 @@ router.get('/:roomId', auth, async (req, res) => {
     res.json(room);
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Server Error');
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -280,7 +280,7 @@ router.delete('/:roomId', auth, async (req, res) => {
     res.json({ message: 'Room deleted successfully' });
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Server Error');
+    res.status(500).json({ message: 'Server error' });
   }
 });
 

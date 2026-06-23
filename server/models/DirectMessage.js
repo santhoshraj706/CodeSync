@@ -15,6 +15,10 @@ const DirectMessageSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  isEdited: {
+    type: Boolean,
+    default: false,
+  },
 }, { timestamps: true });
 
 DirectMessageSchema.index({ conversation: 1, createdAt: -1 });

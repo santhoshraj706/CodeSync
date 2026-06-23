@@ -11,7 +11,7 @@ const InviteToRoom = ({ recipientId, recipientName, onClose }) => {
   const [status, setStatus] = useState(null);
 
   useEffect(() => {
-    api.get('/rooms/recent')
+    api.get('/rooms/recent?admin=true')
       .then(res => setRooms(res.data || []))
       .catch(console.error)
       .finally(() => setLoading(false));

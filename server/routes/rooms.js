@@ -142,13 +142,16 @@ router.post('/join', auth, async (req, res) => {
 // Get recent rooms for user
 router.get('/recent', auth, async (req, res) => {
   try {
+    const onlyAdmin = req.query.admin === 'true';
+
     // Use in-memory fallback if MongoDB connection is not active
     if (mongoose.connection.readyState !== 1) {
-      const rooms = memoryRooms.filter(r => r.members.includes(req.user.id));
+      const rooms = memoryRooms.filter(r => onlyAdmin ? r.admin === req.user.id : r.members.includes(req.user.id));
       return res.json(rooms);
     }
 
-    const rooms = await Room.find({ members: req.user.id }).sort({ updatedAt: -1 }).limit(10);
+    const filter = onlyAdmin ? { admin: req.user.id } : { members: req.user.id };
+    const rooms = await Room.find(filter).sort({ updatedAt: -1 }).limit(10);
     res.json(rooms);
   } catch (err) {
     console.error(err.message);

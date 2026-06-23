@@ -37,6 +37,8 @@ import {
   Loader2,
   User,
   Settings,
+  Users,
+  MessageCircle,
 } from 'lucide-react';
 
 const TEMPLATES = [
@@ -365,6 +367,22 @@ const Dashboard = () => {
               </div>
             </>
           )}
+        </div>
+
+        {/* ── Discovery Navigation ── */}
+        <div className="flex items-center gap-2 animate-fadeIn animate-delay-100">
+          <button
+            onClick={() => navigate('/discover')}
+            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 hover:text-indigo-300 rounded-xl transition-all border border-indigo-500/20 font-bold text-sm shadow-[0_0_15px_rgba(99,102,241,0.1)] hover:shadow-[0_0_20px_rgba(99,102,241,0.2)]"
+          >
+            <Users className="w-4 h-4" /> Find Users
+          </button>
+          <button
+            onClick={() => navigate('/messages')}
+            className="flex items-center gap-2 px-4 py-2.5 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 hover:text-emerald-300 rounded-xl transition-all border border-emerald-500/20 font-bold text-sm shadow-[0_0_15px_rgba(16,185,129,0.1)] hover:shadow-[0_0_20px_rgba(16,185,129,0.2)]"
+          >
+            <MessageCircle className="w-4 h-4" /> Messages
+          </button>
         </div>
 
         {/* ── Main Grid: Left (form) + Right (actions, templates, activity) ── */}

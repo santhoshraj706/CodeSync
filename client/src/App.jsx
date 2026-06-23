@@ -10,6 +10,9 @@ import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
 import Room from './pages/Room';
+import Discover from './pages/Discover';
+import Messages from './pages/Messages';
+import PublicProfile from './pages/PublicProfile';
 import NotFound from './pages/NotFound';
 
 const ProtectedRoute = ({ children }) => {
@@ -61,6 +64,21 @@ const App = () => {
             <Route path="/room/:roomId" element={
               <ProtectedRoute>
                 <Room />
+              </ProtectedRoute>
+            } />
+            <Route path="/discover" element={
+              <ProtectedRoute>
+                <Discover />
+              </ProtectedRoute>
+            } />
+            <Route path="/messages" element={
+              <ProtectedRoute>
+                <Messages />
+              </ProtectedRoute>
+            } />
+            <Route path="/users/:userId" element={
+              <ProtectedRoute>
+                <PublicProfile />
               </ProtectedRoute>
             } />
             <Route path="*" element={<NotFound />} />

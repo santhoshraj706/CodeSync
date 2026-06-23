@@ -1,10 +1,13 @@
 const Room = require('../models/Room');
 const User = require('../models/User');
+const DirectMessage = require('../models/DirectMessage');
+const Conversation = require('../models/Conversation');
 
 const roomUsers = {}; // { roomId: [{ username, socketId }] } — active connections only (in-memory)
 const roomStates = {}; // { roomId: { code: string, language: string, messages: Array, strokes: Array } } - active room state cache
 const roomPresenters = {}; // { roomId: username } - tracks active presenter
 const roomAdmins = {}; // { roomId: { id: string, username: string } } - cached admin info for delete authorization
+const onlineUsers = {}; // { userId: [socketIds] } - track online users for direct messaging
 
 const socketHandler = (io) => {
   io.on('connection', (socket) => {
@@ -455,8 +458,76 @@ const socketHandler = (io) => {
       });
     });
 
+    // ─── Direct Chat (User Discovery) Events ───
+    socket.on('user-online', ({ userId }) => {
+      if (userId) {
+        if (!onlineUsers[userId]) onlineUsers[userId] = [];
+        if (!onlineUsers[userId].includes(socket.id)) {
+          onlineUsers[userId].push(socket.id);
+        }
+        socket.data.userId = userId;
+        io.emit('user-status-changed', { userId, online: true });
+      }
+    });
+
+    socket.on('join-dm', ({ conversationId }) => {
+      if (conversationId) {
+        socket.join(`dm:${conversationId}`);
+      }
+    });
+
+    socket.on('leave-dm', ({ conversationId }) => {
+      if (conversationId) {
+        socket.leave(`dm:${conversationId}`);
+      }
+    });
+
+    socket.on('direct-message', async ({ conversationId, text, senderId, recipientId }) => {
+      try {
+        const msg = new DirectMessage({ conversation: conversationId, sender: senderId, text });
+        await msg.save();
+
+        await Conversation.findByIdAndUpdate(conversationId, {
+          lastMessage: { text, sender: senderId, timestamp: new Date() },
+          $inc: { [`unread.${recipientId}`]: 1 },
+        });
+
+        const populated = await DirectMessage.findById(msg._id)
+          .populate('sender', 'username fullName avatarColor');
+
+        const plain = populated.toObject({ getters: true });
+        plain._id = String(plain._id);
+        plain.conversation = String(plain.conversation);
+        if (plain.sender) plain.sender._id = String(plain.sender._id);
+
+        // Always emit back to sender immediately
+        socket.emit('direct-message', plain);
+        // Broadcast to all other participants in the room
+        socket.to(`dm:${conversationId}`).emit('direct-message', plain);
+      } catch (err) {
+        console.error('Error handling direct message:', err.message);
+      }
+    });
+
+    socket.on('direct-typing-start', ({ conversationId, userId, username }) => {
+      socket.to(`dm:${conversationId}`).emit('direct-typing-start', { conversationId, userId, username });
+    });
+
+    socket.on('direct-typing-stop', ({ conversationId, userId, username }) => {
+      socket.to(`dm:${conversationId}`).emit('direct-typing-stop', { conversationId, userId, username });
+    });
+
     socket.on('disconnect', () => {
       console.log('User disconnected:', socket.id);
+      // Clean up onlineUsers
+      const userId = socket.data.userId;
+      if (userId && onlineUsers[userId]) {
+        onlineUsers[userId] = onlineUsers[userId].filter(sid => sid !== socket.id);
+        if (onlineUsers[userId].length === 0) {
+          delete onlineUsers[userId];
+          io.emit('user-status-changed', { userId, online: false });
+        }
+      }
     });
   });
 };

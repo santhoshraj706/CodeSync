@@ -11,6 +11,11 @@ const roomRoutes = require('./routes/rooms');
 const executeRoutes = require('./routes/execute');
 const aiRoutes = require('./routes/ai');
 const noteRoutes = require('./routes/note');
+const userRoutes = require('./routes/users');
+const chatRequestRoutes = require('./routes/chatRequests');
+const conversationRoutes = require('./routes/conversations');
+const directMessageRoutes = require('./routes/directMessages');
+const roomInviteRoutes = require('./routes/roomInvites');
 const { socketHandler } = require('./socket/socket');
 
 const app = express();
@@ -47,6 +52,11 @@ app.use('/api/rooms', roomRoutes);
 app.use('/api/execute', executeRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/rooms', noteRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/chat-requests', chatRequestRoutes);
+app.use('/api/conversations', conversationRoutes);
+app.use('/api/direct-messages', directMessageRoutes);
+app.use('/api/room-invites', roomInviteRoutes);
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI)

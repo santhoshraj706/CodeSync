@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef, useContext, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { SocketContext } from '../context/SocketContext';
 import api from '../utils/api';
 import {
-  Send, Loader2, User, LogIn, ChevronDown, Copy, CheckCheck, Clock, ArrowLeft
+  Send, Loader2, User, LogIn, ChevronDown, Copy, CheckCheck, Clock, ArrowLeft,
+  Hash, Check, X, ExternalLink, Trash2, Hourglass, CheckCircle2, AlertCircle, FileText
 } from 'lucide-react';
 import InviteToRoom from './InviteToRoom';
 
@@ -45,6 +47,7 @@ const shouldShowDateSeparator = (msg, idx, messages) => {
 const ChatWindow = ({ conversation, onBack, onViewProfile, isOnline, otherUser }) => {
   const { user } = useContext(AuthContext);
   const socket = useContext(SocketContext);
+  const navigate = useNavigate();
   const currentUserId = user?._id ?? user?.id;
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
@@ -54,6 +57,8 @@ const ChatWindow = ({ conversation, onBack, onViewProfile, isOnline, otherUser }
   const [typingUser, setTypingUser] = useState('');
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
+  const [roomInvites, setRoomInvites] = useState([]);
+  const [deleteConfirmInviteId, setDeleteConfirmInviteId] = useState(null);
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const typingTimeoutRef = useRef(null);
@@ -80,15 +85,22 @@ const ChatWindow = ({ conversation, onBack, onViewProfile, isOnline, otherUser }
     setLoading(true);
     setMessages([]);
     setNewMessage('');
-    api.get(`/direct-messages/${conversation._id}`)
-      .then(res => setMessages(res.data))
+    const otherId = other?._id ?? other?.id;
+    Promise.all([
+      api.get(`/direct-messages/${conversation._id}`),
+      otherId ? api.get(`/room-invites/between/${otherId}`) : Promise.resolve({ data: [] }),
+    ])
+      .then(([msgRes, inviteRes]) => {
+        setMessages(msgRes.data);
+        setRoomInvites(inviteRes.data || []);
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [conversation]);
 
   useEffect(() => {
     scrollToBottom(false);
-  }, [messages]);
+  }, [messages, roomInvites]);
 
   const handleScroll = useCallback(() => {
     setShowScrollBtn(!isNearBottom());
@@ -123,14 +135,31 @@ const ChatWindow = ({ conversation, onBack, onViewProfile, isOnline, otherUser }
       }
     };
 
+    const inviteAcceptedHandler = (data) => {
+      setRoomInvites(prev =>
+        prev.map(inv =>
+          inv.roomId === data.roomId && inv.status === 'pending'
+            ? { ...inv, status: 'accepted' }
+            : inv
+        )
+      );
+    };
+    const inviteDeletedHandler = ({ inviteId }) => {
+      setRoomInvites(prev => prev.filter(inv => inv._id !== inviteId));
+    };
+
     socket.on('direct-message', handler);
     socket.on('direct-typing-start', typingStartHandler);
     socket.on('direct-typing-stop', typingStopHandler);
+    socket.on('invite-accepted', inviteAcceptedHandler);
+    socket.on('invite-deleted', inviteDeletedHandler);
 
     return () => {
       socket.off('direct-message', handler);
       socket.off('direct-typing-start', typingStartHandler);
       socket.off('direct-typing-stop', typingStopHandler);
+      socket.off('invite-accepted', inviteAcceptedHandler);
+      socket.off('invite-deleted', inviteDeletedHandler);
       socket.emit('leave-dm', { conversationId: cid });
       setTyping(false);
     };
@@ -292,7 +321,7 @@ const ChatWindow = ({ conversation, onBack, onViewProfile, isOnline, otherUser }
             </div>
             <span className="text-xs text-slate-500">Loading messages...</span>
           </div>
-        ) : messages.length === 0 ? (
+        ) : messages.length === 0 && roomInvites.length === 0 ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
               <div className="w-12 h-12 rounded-2xl bg-white/[0.04] flex items-center justify-center mx-auto mb-3 border border-white/[0.06]">
@@ -303,7 +332,136 @@ const ChatWindow = ({ conversation, onBack, onViewProfile, isOnline, otherUser }
             </div>
           </div>
         ) : (
-          messages.map((msg, idx) => {
+          <>
+            {roomInvites.map((inv) => {
+              const isMyInvite = String(inv.from?._id ?? inv.from) === String(currentUserId);
+              const person = isMyInvite ? inv.to : inv.from;
+              if (!person) return null;
+              const avatarColor = person.avatarColor || '#6366f1';
+              const pName = person.fullName || person.username;
+
+              return (
+                <div key={inv._id} className="py-2">
+                  <div className={`flex ${isMyInvite ? 'justify-end' : 'justify-start'}`}>
+                    <div className="w-full max-w-[85%] md:max-w-[75%]">
+                      <div className={`relative p-3 rounded-2xl ${
+                        isMyInvite
+                          ? 'bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/15 rounded-br-md'
+                          : 'bg-white/[0.06] border border-white/10 rounded-bl-md'
+                      }`}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <div
+                            className="w-6 h-6 rounded-md flex items-center justify-center text-[8px] font-bold text-white shrink-0"
+                            style={{ backgroundColor: avatarColor }}
+                          >
+                            {pName.charAt(0).toUpperCase()}
+                          </div>
+                          <span className="text-xs font-semibold text-white">{pName}</span>
+                          {inv.status === 'pending' && (
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-amber-300 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/15 flex items-center gap-1">
+                              <Hourglass className="w-2.5 h-2.5" /> Pending
+                            </span>
+                          )}
+                          {inv.status === 'accepted' && (
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-300 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/15 flex items-center gap-1">
+                              <CheckCircle2 className="w-2.5 h-2.5" /> Accepted
+                            </span>
+                          )}
+                          {inv.status === 'rejected' && (
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-red-300 bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/15 flex items-center gap-1">
+                              <AlertCircle className="w-2.5 h-2.5" /> Rejected
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Hash className="w-3 h-3 text-indigo-400 shrink-0" />
+                          <span className="text-xs font-mono text-indigo-300 font-semibold">{inv.roomId}</span>
+                        </div>
+                        {inv.note && (
+                          <div className="flex items-start gap-1 mb-1.5">
+                            <FileText className="w-3 h-3 text-slate-500 shrink-0 mt-0.5" />
+                            <p className="text-[10px] text-slate-400 italic">"{inv.note}"</p>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-white/[0.06]">
+                          <span className="text-[9px] text-slate-600">
+                            {new Date(inv.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          <div className="ml-auto flex items-center gap-1.5">
+                            {isMyInvite && (
+                              <button
+                                onClick={() => setDeleteConfirmInviteId(inv._id)}
+                                className="p-1.5 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-500/15 transition-all border border-red-500/20"
+                                title="Delete invite"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            )}
+                            {!isMyInvite && inv.status === 'pending' && (
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    await api.put(`/room-invites/${inv._id}/accept`);
+                                    setRoomInvites(prev =>
+                                      prev.map(i => i._id === inv._id ? { ...i, status: 'accepted' } : i)
+                                    );
+                                  } catch (err) {
+                                    console.error('Failed to accept invite:', err);
+                                  }
+                                }}
+                                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-all text-[9px] font-semibold border border-emerald-500/20"
+                              >
+                                <Check className="w-3 h-3" /> Accept
+                              </button>
+                            )}
+                            {!isMyInvite && inv.status === 'pending' && (
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    await api.put(`/room-invites/${inv._id}/reject`);
+                                    setRoomInvites(prev =>
+                                      prev.map(i => i._id === inv._id ? { ...i, status: 'rejected' } : i)
+                                    );
+                                  } catch (err) {
+                                    console.error('Failed to reject invite:', err);
+                                  }
+                                }}
+                                className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 transition-all border border-transparent hover:border-red-500/20"
+                                title="Reject"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            )}
+                            {(inv.status === 'accepted') && (
+                              <button
+                                onClick={() => navigate(`/room/${inv.roomId}`)}
+                                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-all text-[9px] font-semibold border border-emerald-500/20"
+                              >
+                                <ExternalLink className="w-3 h-3" /> Join Room
+                              </button>
+                            )}
+                            {(inv.status === 'accepted' || inv.status === 'rejected') && (
+                              <button
+                                onClick={() => navigate(`/room/${inv.roomId}`)}
+                                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 transition-all text-[9px] font-semibold border border-indigo-500/20"
+                              >
+                                <ExternalLink className="w-3 h-3" /> View Room
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            <div className="flex items-center gap-3 py-2">
+              <div className="flex-1 h-px bg-white/[0.06]"></div>
+              <span className="text-[10px] font-semibold text-slate-500 shrink-0">Messages</span>
+              <div className="flex-1 h-px bg-white/[0.06]"></div>
+            </div>
+            {messages.map((msg, idx) => {
             const isOwn = String(msg.sender?._id ?? msg.sender?.id ?? msg.sender) === String(currentUserId);
             const isOptimistic = String(msg._id).startsWith('opt-');
 
@@ -356,7 +514,8 @@ const ChatWindow = ({ conversation, onBack, onViewProfile, isOnline, otherUser }
                 </div>
               </div>
             );
-          })
+          })}
+          </>
         )}
 
         {/* Typing indicator */}
@@ -418,6 +577,41 @@ const ChatWindow = ({ conversation, onBack, onViewProfile, isOnline, otherUser }
           <Send className="w-4 h-4" />
         </button>
       </form>
+
+      {/* Delete Invite Confirmation */}
+      {deleteConfirmInviteId && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-md animate-fadeIn px-4">
+          <div className="metallic-panel border-red-500/20 p-6 rounded-2xl shadow-2xl max-w-sm w-full relative">
+            <div className="w-12 h-12 mx-auto mb-4 rounded-2xl bg-red-500/15 border border-red-500/25 flex items-center justify-center">
+              <AlertCircle className="w-6 h-6 text-red-400" />
+            </div>
+            <h3 className="text-lg font-bold text-white text-center mb-2">Delete Invite</h3>
+            <p className="text-sm text-slate-400 text-center mb-6">
+              Permanently delete this invite? The other user will no longer see it.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteConfirmInviteId(null)}
+                className="flex-1 py-3 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-slate-300 font-bold text-sm border border-white/[0.08] transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  const id = deleteConfirmInviteId;
+                  setDeleteConfirmInviteId(null);
+                  api.delete(`/room-invites/${id}`)
+                    .then(() => setRoomInvites(prev => prev.filter(i => i._id !== id)))
+                    .catch(console.error);
+                }}
+                className="flex-1 py-3 rounded-xl bg-red-500 hover:bg-red-400 text-white font-bold text-sm border border-red-400/30 shadow-lg shadow-red-500/20 transition-all"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Invite to Room Modal */}
       {showInvite && (

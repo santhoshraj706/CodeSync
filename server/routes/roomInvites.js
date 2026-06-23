@@ -51,6 +51,26 @@ router.get('/incoming', auth, async (req, res) => {
   }
 });
 
+router.get('/between/:userId', auth, async (req, res) => {
+  try {
+    const otherId = req.params.userId;
+    const myId = req.user.id;
+    const invites = await RoomInvite.find({
+      $or: [
+        { from: myId, to: otherId },
+        { from: otherId, to: myId },
+      ],
+    })
+      .populate('from', 'username fullName avatarColor')
+      .populate('to', 'username fullName avatarColor')
+      .sort({ createdAt: -1 });
+    res.json(invites);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+});
+
 router.get('/outgoing', auth, async (req, res) => {
   try {
     const invites = await RoomInvite.find({ from: req.user.id })

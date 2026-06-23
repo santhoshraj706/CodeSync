@@ -9,6 +9,7 @@ const StrokeSchema = new mongoose.Schema({
   strokeColor: String,
   lineWidth: Number,
   text: String,
+  strokeGroup: String,
   // Sticky note fields
   action: String,
   id: String,

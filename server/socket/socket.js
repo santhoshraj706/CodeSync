@@ -305,6 +305,20 @@ const socketHandler = (io) => {
       Room.updateOne({ roomId }, { strokes: [] }).catch(err => console.error('DB Error clearing board:', err.message));
     });
 
+    socket.on('whiteboard-undo', ({ roomId, strokeGroup }) => {
+      if (roomStates[roomId]) {
+        if (strokeGroup) {
+          roomStates[roomId].strokes = roomStates[roomId].strokes.filter(s => s.strokeGroup !== strokeGroup);
+          socket.to(roomId).emit('whiteboard-undo', { strokeGroup });
+          Room.updateOne({ roomId }, { $pull: { strokes: { strokeGroup } } }).catch(err => console.error('DB Error undoing stroke group:', err.message));
+        } else if (roomStates[roomId].strokes.length > 0) {
+          roomStates[roomId].strokes.pop();
+          socket.to(roomId).emit('whiteboard-undo');
+          Room.updateOne({ roomId }, { $pop: { strokes: 1 } }).catch(err => console.error('DB Error undoing stroke:', err.message));
+        }
+      }
+    });
+
     socket.on('whiteboard-cursor-move', ({ roomId, socketId, userId, username, fullName, avatarColor, x, y }) => {
       socket.to(roomId).emit('whiteboard-cursor-update', { socketId, userId, username, fullName, avatarColor, x, y });
     });

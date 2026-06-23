@@ -54,7 +54,9 @@ const Whiteboard = ({ roomId, isVisible, sharedStrokesRef, user }) => {
   const strokesRef = sharedStrokesRef || localStrokesRef;
   const [remoteCursors, setRemoteCursors] = useState({});
   const cursorThrottleRef = useRef(null);
+  const strokeGroupRef = useRef(null);
   const boardRef = useRef(null);
+  const generateId = () => Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9);
 
   // Track canvas size in state to trigger React re-renders for absolute elements (like Sticky Notes)
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
@@ -227,8 +229,27 @@ const Whiteboard = ({ roomId, isVisible, sharedStrokesRef, user }) => {
       });
     };
 
+    const onUndo = ({ strokeGroup } = {}) => {
+      if (strokeGroup) {
+        const removed = strokesRef.current.filter(s => s.strokeGroup === strokeGroup);
+        strokesRef.current = strokesRef.current.filter(s => s.strokeGroup !== strokeGroup);
+        removed.forEach(s => {
+          if (s.type === 'stickynote' && s.action === 'create') {
+            setNotes(prev => prev.filter(n => n.id !== s.id));
+          }
+        });
+      } else if (strokesRef.current.length > 0) {
+        const removed = strokesRef.current.pop();
+        if (removed.type === 'stickynote' && removed.action === 'create') {
+          setNotes(prev => prev.filter(n => n.id !== removed.id));
+        }
+      }
+      redrawAll();
+    };
+
     socket.on('whiteboard-cursor-update', onCursorUpdate);
     socket.on('whiteboard-cursor-remove', onCursorRemove);
+    socket.on('whiteboard-undo', onUndo);
 
     return () => {
       if (socket && roomId) {
@@ -239,6 +260,7 @@ const Whiteboard = ({ roomId, isVisible, sharedStrokesRef, user }) => {
       socket.off('whiteboard-clear', onClear);
       socket.off('whiteboard-cursor-update', onCursorUpdate);
       socket.off('whiteboard-cursor-remove', onCursorRemove);
+      socket.off('whiteboard-undo', onUndo);
     };
   }, [socket, user]);
 
@@ -305,8 +327,16 @@ const Whiteboard = ({ roomId, isVisible, sharedStrokesRef, user }) => {
   }, []);
 
   const emitDraw = (drawData) => {
-    strokesRef.current.push(drawData);
-    socket.emit('whiteboard-draw', { roomId, drawData });
+    const group = strokeGroupRef.current;
+    if (!group) {
+      const data = { ...drawData, strokeGroup: generateId() };
+      strokesRef.current.push(data);
+      socket.emit('whiteboard-draw', { roomId, drawData: data });
+      return;
+    }
+    const data = { ...drawData, strokeGroup: group };
+    strokesRef.current.push(data);
+    socket.emit('whiteboard-draw', { roomId, drawData: data });
   };
 
   const saveUndo = () => {
@@ -320,21 +350,41 @@ const Whiteboard = ({ roomId, isVisible, sharedStrokesRef, user }) => {
   };
 
   const handleUndo = () => {
-    if (undoStack.length === 0) return;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    const prev = undoStack[undoStack.length - 1];
-    setUndoStack(s => s.slice(0, -1));
-    const img = new Image();
-    img.onload = () => {
-      ctx.save();
-      // Reset transform temporarily to draw full background snapshot
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0);
-      ctx.restore();
-    };
-    img.src = prev;
+    const strokes = strokesRef.current;
+    if (strokes.length === 0) return;
+
+    let lastGroup = null;
+    for (let i = strokes.length - 1; i >= 0; i--) {
+      if (strokes[i].type !== 'stickynote' && strokes[i].strokeGroup) {
+        lastGroup = strokes[i].strokeGroup;
+        break;
+      }
+    }
+
+    if (!lastGroup) {
+      const last = strokes[strokes.length - 1];
+      if (last.type === 'stickynote' && last.action === 'create') {
+        setNotes(prev => prev.filter(n => n.id !== last.id));
+      }
+      strokesRef.current = strokes.slice(0, -1);
+      redrawAll();
+      if (socket) socket.emit('whiteboard-undo', { roomId });
+      return;
+    }
+
+    const removed = strokes.filter(s => s.strokeGroup === lastGroup);
+    removed.forEach(s => {
+      if (s.type === 'stickynote' && s.action === 'create') {
+        setNotes(prev => prev.filter(n => n.id !== s.id));
+      }
+    });
+
+    strokesRef.current = strokes.filter(s => s.strokeGroup !== lastGroup);
+    redrawAll();
+
+    if (socket) {
+      socket.emit('whiteboard-undo', { roomId, strokeGroup: lastGroup });
+    }
   };
 
   const handleMouseDown = (e) => {
@@ -347,6 +397,7 @@ const Whiteboard = ({ roomId, isVisible, sharedStrokesRef, user }) => {
     const virtualY = toVirtualY(actualY, canvas.height);
 
     if (tool === 'text') {
+      strokeGroupRef.current = generateId();
       setTextInsertCoords({ x: virtualX, y: virtualY });
       return;
     }
@@ -376,6 +427,7 @@ const Whiteboard = ({ roomId, isVisible, sharedStrokesRef, user }) => {
       setSnapshotData(canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height));
     }
 
+    strokeGroupRef.current = generateId();
     setLastPos({ x: virtualX, y: virtualY });
     lastPosRef.current = { x: virtualX, y: virtualY };
     setIsDrawing(true);
@@ -497,6 +549,7 @@ const Whiteboard = ({ roomId, isVisible, sharedStrokesRef, user }) => {
       setSnapshotData(null);
     }
     setIsDrawing(false);
+    strokeGroupRef.current = null;
   };
 
   const clearCanvas = (emit = true) => {
@@ -868,12 +921,12 @@ const Whiteboard = ({ roomId, isVisible, sharedStrokesRef, user }) => {
 
         <div className="w-px h-8 bg-white/10 mx-2" />
 
-        <button
-          onClick={handleUndo}
-          className="p-2.5 rounded-xl bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white transition-all duration-200 disabled:opacity-30 disabled:hover:bg-white/5 border border-transparent hover:border-white/10"
-          title="Undo"
-          disabled={undoStack.length === 0}
-        >
+          <button
+            onClick={handleUndo}
+            className="p-2.5 rounded-xl bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white transition-all duration-200 disabled:opacity-30 disabled:hover:bg-white/5 border border-transparent hover:border-white/10"
+            title="Undo"
+            disabled={strokesRef.current.length === 0}
+          >
           <Undo2 className="w-4 h-4" />
         </button>
 
@@ -990,6 +1043,7 @@ const Whiteboard = ({ roomId, isVisible, sharedStrokesRef, user }) => {
                   lineWidth: brushSize,
                   text: textValue
                 });
+                strokeGroupRef.current = null;
               }
               setTextInsertCoords(null);
               setTextValue('');

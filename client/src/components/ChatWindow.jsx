@@ -365,7 +365,7 @@ const ChatWindow = ({ conversation, onBack, onViewProfile, isOnline, otherUser }
               const isMyInvite = String(inv.from?._id ?? inv.from) === String(currentUserId);
               const person = isMyInvite ? inv.to : inv.from;
               if (!person) return null;
-              const avatarColor = person.avatarColor || '#6366f1';
+              const avatarColor = person.avatarColor || generateAvatarColor(person.fullName || person.username);
               const pName = person.fullName || person.username;
 
               return (

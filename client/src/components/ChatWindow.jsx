@@ -845,7 +845,7 @@ const ChatWindow = ({ conversation, onBack, onViewProfile, isOnline, otherUser }
 
       {/* Block Confirmation */}
       {showBlockConfirm && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-md animate-fadeIn px-4">
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 backdrop-blur-md animate-fadeIn px-4">
           <div className="metallic-panel border-red-500/20 p-6 rounded-2xl shadow-2xl max-w-sm w-full relative">
             <div className="w-12 h-12 mx-auto mb-4 rounded-2xl bg-red-500/15 border border-red-500/25 flex items-center justify-center">
               <ShieldOff className="w-6 h-6 text-red-400" />
@@ -874,7 +874,7 @@ const ChatWindow = ({ conversation, onBack, onViewProfile, isOnline, otherUser }
 
       {/* Unblock Confirmation */}
       {showUnblockConfirm && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-md animate-fadeIn px-4">
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 backdrop-blur-md animate-fadeIn px-4">
           <div className="metallic-panel border-amber-500/20 p-6 rounded-2xl shadow-2xl max-w-sm w-full relative">
             <div className="w-12 h-12 mx-auto mb-4 rounded-2xl bg-amber-500/15 border border-amber-500/25 flex items-center justify-center">
               <Shield className="w-6 h-6 text-amber-400" />
@@ -903,7 +903,7 @@ const ChatWindow = ({ conversation, onBack, onViewProfile, isOnline, otherUser }
 
       {/* Delete Invite Confirmation */}
       {deleteConfirmInviteId && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-md animate-fadeIn px-4">
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 backdrop-blur-md animate-fadeIn px-4">
           <div className="metallic-panel border-red-500/20 p-6 rounded-2xl shadow-2xl max-w-sm w-full relative">
             <div className="w-12 h-12 mx-auto mb-4 rounded-2xl bg-red-500/15 border border-red-500/25 flex items-center justify-center">
               <AlertCircle className="w-6 h-6 text-red-400" />
@@ -938,7 +938,7 @@ const ChatWindow = ({ conversation, onBack, onViewProfile, isOnline, otherUser }
 
       {/* Delete Message Confirmation */}
       {deleteConfirmMsgId && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-md animate-fadeIn px-4">
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 backdrop-blur-md animate-fadeIn px-4">
           <div className="metallic-panel border-red-500/20 p-6 rounded-2xl shadow-2xl max-w-sm w-full relative">
             <div className="w-12 h-12 mx-auto mb-4 rounded-2xl bg-red-500/15 border border-red-500/25 flex items-center justify-center">
               <AlertCircle className="w-6 h-6 text-red-400" />

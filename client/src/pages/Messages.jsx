@@ -352,7 +352,7 @@ const Messages = () => {
             </div>
 
             {/* Content */}
-            <div className="metallic-panel flex-1 rounded-xl p-2 overflow-y-auto min-h-0">
+            <div key={activeTab} className="metallic-panel flex-1 rounded-xl p-2 overflow-y-auto min-h-0">
               {loading ? (
                 <div className="space-y-2">
                   {SKELETON_ITEMS.map(i => (
@@ -486,7 +486,7 @@ const Messages = () => {
             </div>
           </div>
 
-          {/* Right chat window */}
+          {/* Right chat window — only renders meaningful content on Chats tab */}
           <div className="hidden md:flex flex-1 min-w-0 metallic-panel rounded-2xl overflow-hidden relative bg-[#0a0e1a]/50">
             {activeConversation ? (
               <ChatWindow
@@ -496,7 +496,7 @@ const Messages = () => {
                 isOnline={isOnline}
                 otherUser={activeOtherUser}
               />
-            ) : (
+            ) : activeTab === 'messages' ? (
               <div className="flex items-center justify-center flex-1">
                 <div className="text-center px-8 max-w-sm">
                   <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 flex items-center justify-center mx-auto mb-5 border border-indigo-500/20 shadow-[0_0_30px_rgba(99,102,241,0.1)]">
@@ -524,7 +524,7 @@ const Messages = () => {
                   </div>
                 </div>
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       </div>

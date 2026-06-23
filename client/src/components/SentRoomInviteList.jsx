@@ -1,8 +1,7 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   User, Hash, Clock, ExternalLink, FileText,
-  Hourglass, CheckCircle2, AlertCircle, LogIn, Trash2, X
+  Hourglass, CheckCircle2, AlertCircle, LogIn, Trash2
 } from 'lucide-react';
 
 const AVATAR_COLORS = [
@@ -56,17 +55,8 @@ const StatusBadge = ({ status }) => {
   }
 };
 
-const SentRoomInviteList = ({ sentInvites = [], loading = false, onViewProfile, onDelete }) => {
+const SentRoomInviteList = ({ sentInvites = [], loading = false, onViewProfile, onDeleteClick }) => {
   const navigate = useNavigate();
-  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
-
-  const confirmDelete = (id) => setDeleteConfirmId(id);
-  const handleConfirmDelete = () => {
-    if (deleteConfirmId && onDelete) {
-      onDelete(deleteConfirmId);
-      setDeleteConfirmId(null);
-    }
-  };
 
   if (loading) {
     return (
@@ -141,9 +131,10 @@ const SentRoomInviteList = ({ sentInvites = [], loading = false, onViewProfile, 
                   <User className="w-3 h-3" /> View Profile
                 </button>
                 <div className="flex items-center gap-1.5 ml-auto">
-                  {onDelete && (
+                  {onDeleteClick && (
                     <button
-                      onClick={() => confirmDelete(inv._id)}
+                      type="button"
+                      onClick={() => onDeleteClick(inv._id)}
                       className="p-2 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-500/15 transition-all border border-red-500/20"
                       title="Delete invite"
                     >
@@ -171,40 +162,6 @@ const SentRoomInviteList = ({ sentInvites = [], loading = false, onViewProfile, 
           );
         })}
       </div>
-
-      {deleteConfirmId && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 backdrop-blur-sm animate-fadeIn px-4">
-          <div className="metallic-panel border-red-500/20 p-6 rounded-2xl shadow-2xl max-w-sm w-full relative">
-            <button
-              onClick={() => setDeleteConfirmId(null)}
-              className="absolute top-4 right-4 p-1 text-slate-400 hover:text-white"
-            >
-              <X className="w-4 h-4" />
-            </button>
-            <div className="w-12 h-12 mx-auto mb-4 rounded-2xl bg-red-500/15 border border-red-500/25 flex items-center justify-center">
-              <AlertCircle className="w-6 h-6 text-red-400" />
-            </div>
-            <h3 className="text-lg font-bold text-white text-center mb-2">Delete Invite</h3>
-            <p className="text-sm text-slate-400 text-center mb-6">
-              This will permanently remove the invite. The other user will no longer see it.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setDeleteConfirmId(null)}
-                className="flex-1 py-3 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-slate-300 font-bold text-sm border border-white/[0.08] transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmDelete}
-                className="flex-1 py-3 rounded-xl bg-red-500 hover:bg-red-400 text-white font-bold text-sm border border-red-400/30 shadow-lg shadow-red-500/20 transition-all"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 };

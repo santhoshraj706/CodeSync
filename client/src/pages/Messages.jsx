@@ -13,7 +13,7 @@ import RoomInviteList from '../components/RoomInviteList';
 import SentRoomInviteList from '../components/SentRoomInviteList';
 import {
   ArrowLeft, ArrowRight, MessageCircle, UserPlus, CheckCircle2, AlertCircle,
-  Send, Inbox, Users, Loader2, Search, LogIn, DoorOpen, Ban, ShieldOff
+  Send, Inbox, Users, Loader2, Search, LogIn, DoorOpen, Ban, ShieldOff, X
 } from 'lucide-react';
 
 const SKELETON_ITEMS = [1, 2, 3, 4, 5];
@@ -40,6 +40,8 @@ const Messages = () => {
   const [sentInvitesLoading, setSentInvitesLoading] = useState(true);
   const [blockedUsers, setBlockedUsers] = useState([]);
   const [blockedUsersLoading, setBlockedUsersLoading] = useState(false);
+  const [inviteToDeleteId, setInviteToDeleteId] = useState(null);
+  const [isDeletingInvite, setIsDeletingInvite] = useState(false);
 
   const showToast = (message, type = 'success', actionRoomId = null) => {
     setToast({ message, type, actionRoomId });
@@ -146,6 +148,25 @@ const Messages = () => {
         return next;
       });
     } catch {}
+  };
+
+  const closeDeleteInviteModal = () => {
+    setInviteToDeleteId(null);
+    setIsDeletingInvite(false);
+  };
+
+  const handleConfirmDeleteInvite = async () => {
+    if (!inviteToDeleteId) return;
+    setIsDeletingInvite(true);
+    try {
+      await api.delete(`/room-invites/${inviteToDeleteId}`);
+      setSentInvites(prev => prev.filter(inv => inv._id !== inviteToDeleteId));
+      closeDeleteInviteModal();
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Failed to delete invite', 'error');
+    } finally {
+      setIsDeletingInvite(false);
+    }
   };
 
   const handleUnblock = async (userId) => {
@@ -400,11 +421,7 @@ const Messages = () => {
                         sentInvites={sentInvites}
                         loading={sentInvitesLoading}
                         onViewProfile={handleViewProfile}
-                        onDelete={(id) => {
-                          api.delete(`/room-invites/${id}`)
-                            .then(() => setSentInvites(prev => prev.filter(inv => inv._id !== id)))
-                            .catch(err => console.error('Failed to delete invite:', err));
-                        }}
+                        onDeleteClick={(id) => setInviteToDeleteId(id)}
                       />
                     </>
                   )}
@@ -430,11 +447,7 @@ const Messages = () => {
                         sentInvites={sentInvites}
                         loading={sentInvitesLoading}
                         onViewProfile={handleViewProfile}
-                        onDelete={(id) => {
-                          api.delete(`/room-invites/${id}`)
-                            .then(() => setSentInvites(prev => prev.filter(inv => inv._id !== id)))
-                            .catch(err => console.error('Failed to delete invite:', err));
-                        }}
+                        onDeleteClick={(id) => setInviteToDeleteId(id)}
                       />
                     </>
                   )}
@@ -575,6 +588,53 @@ const Messages = () => {
           recipientName={inviteFromDrawer.fullName || inviteFromDrawer.username}
           onClose={() => setInviteFromDrawer(null)}
         />
+      )}
+
+      {/* Delete Invite Confirmation Modal */}
+      {inviteToDeleteId && (
+        <div
+          className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 backdrop-blur-sm animate-fadeIn px-4"
+          onClick={closeDeleteInviteModal}
+        >
+          <div
+            className="relative z-[1001] pointer-events-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="metallic-panel border-red-500/20 p-6 rounded-2xl shadow-2xl max-w-sm w-full relative">
+              <button
+                type="button"
+                onClick={closeDeleteInviteModal}
+                className="absolute top-4 right-4 p-1 text-slate-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              <div className="w-12 h-12 mx-auto mb-4 rounded-2xl bg-red-500/15 border border-red-500/25 flex items-center justify-center">
+                <AlertCircle className="w-6 h-6 text-red-400" />
+              </div>
+              <h3 className="text-lg font-bold text-white text-center mb-2">Delete Invite</h3>
+              <p className="text-sm text-slate-400 text-center mb-6">
+                This will permanently remove the invite. The other user will no longer see it.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={closeDeleteInviteModal}
+                  className="flex-1 py-3 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-slate-300 font-bold text-sm border border-white/[0.08] transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmDeleteInvite}
+                  disabled={isDeletingInvite}
+                  className="flex-1 py-3 rounded-xl bg-red-500 hover:bg-red-400 text-white font-bold text-sm border border-red-400/30 shadow-lg shadow-red-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isDeletingInvite ? 'Deleting...' : 'Delete'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Toast */}

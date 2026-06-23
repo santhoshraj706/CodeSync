@@ -32,6 +32,25 @@ router.post('/', auth, async (req, res) => {
     const populated = await RoomInvite.findById(invite._id)
       .populate('from', 'username fullName avatarColor')
       .populate('to', 'username fullName avatarColor');
+
+    // Notify both sender and recipient about the new invite
+    try {
+      const io = req.app.get('io');
+      const payload = {
+        ...populated.toObject(),
+        fromUserId: req.user.id,
+        toUserId: to,
+      };
+      [req.user.id, to].forEach((uid) => {
+        const sockets = onlineUsers[uid];
+        if (sockets) {
+          sockets.forEach((sid) => io.to(sid).emit('invite-sent', payload));
+        }
+      });
+    } catch (notifyErr) {
+      console.error('Failed to notify about invite-sent:', notifyErr.message);
+    }
+
     res.json(populated);
   } catch (err) {
     console.error(err.message);

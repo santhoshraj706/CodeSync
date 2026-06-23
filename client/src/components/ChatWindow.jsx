@@ -135,6 +135,19 @@ const ChatWindow = ({ conversation, onBack, onViewProfile, isOnline, otherUser }
       }
     };
 
+    const inviteSentHandler = (data) => {
+      const otherId = other?._id ?? other?.id;
+      if (!otherId) return;
+      const fromId = String(data.from?._id ?? data.from ?? data.fromUserId);
+      const toId = String(data.to?._id ?? data.to ?? data.toUserId);
+      if ((fromId === String(currentUserId) && toId === String(otherId)) ||
+          (fromId === String(otherId) && toId === String(currentUserId))) {
+        setRoomInvites(prev => {
+          if (prev.find(inv => inv._id === data._id)) return prev;
+          return [...prev, data];
+        });
+      }
+    };
     const inviteAcceptedHandler = (data) => {
       setRoomInvites(prev =>
         prev.map(inv =>
@@ -151,6 +164,7 @@ const ChatWindow = ({ conversation, onBack, onViewProfile, isOnline, otherUser }
     socket.on('direct-message', handler);
     socket.on('direct-typing-start', typingStartHandler);
     socket.on('direct-typing-stop', typingStopHandler);
+    socket.on('invite-sent', inviteSentHandler);
     socket.on('invite-accepted', inviteAcceptedHandler);
     socket.on('invite-deleted', inviteDeletedHandler);
 
@@ -158,6 +172,7 @@ const ChatWindow = ({ conversation, onBack, onViewProfile, isOnline, otherUser }
       socket.off('direct-message', handler);
       socket.off('direct-typing-start', typingStartHandler);
       socket.off('direct-typing-stop', typingStopHandler);
+      socket.off('invite-sent', inviteSentHandler);
       socket.off('invite-accepted', inviteAcceptedHandler);
       socket.off('invite-deleted', inviteDeletedHandler);
       socket.emit('leave-dm', { conversationId: cid });

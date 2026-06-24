@@ -19,6 +19,30 @@ const DirectMessageSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  replyTo: {
+    messageId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'DirectMessage',
+      default: null,
+    },
+    sender: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    senderName: {
+      type: String,
+      default: '',
+    },
+    text: {
+      type: String,
+      default: '',
+    },
+    createdAt: {
+      type: Date,
+      default: null,
+    },
+  },
 }, { timestamps: true });
 
 DirectMessageSchema.index({ conversation: 1, createdAt: -1 });

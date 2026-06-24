@@ -483,7 +483,7 @@ const socketHandler = (io) => {
       }
     });
 
-    socket.on('direct-message', async ({ conversationId, text, senderId, recipientId }) => {
+    socket.on('direct-message', async ({ conversationId, text, senderId, recipientId, replyToMessageId }) => {
       try {
         // Check block status: if either side blocked the other, reject
         const [blockedByRecipient, blockedBySender] = await Promise.all([
@@ -505,7 +505,40 @@ const socketHandler = (io) => {
           return;
         }
 
-        const msg = new DirectMessage({ conversation: conversationId, sender: senderId, text });
+        // Handle replyTo
+        let replyToData = null;
+        if (replyToMessageId) {
+          const originalMsg = await DirectMessage.findById(replyToMessageId);
+          if (!originalMsg) {
+            socket.emit('direct-message-error', {
+              conversationId,
+              message: 'The message you are replying to was not found.',
+            });
+            return;
+          }
+          if (String(originalMsg.conversation) !== String(conversationId)) {
+            socket.emit('direct-message-error', {
+              conversationId,
+              message: 'Cannot reply to a message from a different conversation.',
+            });
+            return;
+          }
+          const originalSender = await User.findById(originalMsg.sender).select('username fullName');
+          replyToData = {
+            messageId: originalMsg._id,
+            sender: originalMsg.sender,
+            senderName: originalSender?.fullName || originalSender?.username || 'Unknown',
+            text: originalMsg.text,
+            createdAt: originalMsg.createdAt,
+          };
+        }
+
+        const msg = new DirectMessage({
+          conversation: conversationId,
+          sender: senderId,
+          text,
+          replyTo: replyToData,
+        });
         await msg.save();
 
         await Conversation.findByIdAndUpdate(conversationId, {
@@ -520,6 +553,8 @@ const socketHandler = (io) => {
         plain._id = String(plain._id);
         plain.conversation = String(plain.conversation);
         if (plain.sender) plain.sender._id = String(plain.sender._id);
+        if (plain.replyTo?.messageId) plain.replyTo.messageId = String(plain.replyTo.messageId);
+        if (plain.replyTo?.sender) plain.replyTo.sender = String(plain.replyTo.sender);
 
         // Always emit back to sender immediately
         socket.emit('direct-message', plain);

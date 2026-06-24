@@ -6,7 +6,7 @@ import api from '../utils/api';
 import {
   Send, Loader2, User, LogIn, ChevronDown, Copy, CheckCheck, Clock, ArrowLeft,
   Hash, Check, X, ExternalLink, Trash2, Hourglass, CheckCircle2, AlertCircle, FileText,
-  Shield, ShieldOff, Ban, Edit3, Save
+  Shield, ShieldOff, Ban, Edit3, Save, Reply
 } from 'lucide-react';
 import InviteToRoom from './InviteToRoom';
 import EmojiPickerButton from './EmojiPickerButton';
@@ -67,6 +67,7 @@ const ChatWindow = ({ conversation, onBack, onViewProfile, isOnline, otherUser }
   const [editingMessageId, setEditingMessageId] = useState(null);
   const [editText, setEditText] = useState('');
   const [deleteConfirmMsgId, setDeleteConfirmMsgId] = useState(null);
+  const [replyingTo, setReplyingTo] = useState(null);
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const typingTimeoutRef = useRef(null);
@@ -99,6 +100,7 @@ const ChatWindow = ({ conversation, onBack, onViewProfile, isOnline, otherUser }
     setLoading(true);
     setMessages([]);
     setNewMessage('');
+    setReplyingTo(null);
     const otherId = other?._id ?? other?.id;
     Promise.all([
       api.get(`/direct-messages/${conversation._id}`),
@@ -281,17 +283,25 @@ const ChatWindow = ({ conversation, onBack, onViewProfile, isOnline, otherUser }
       sender: { _id: currentUserId, username: user.username, fullName: user.fullName, avatarColor: user.avatarColor },
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      replyTo: replyingTo ? {
+        messageId: replyingTo._id,
+        senderName: replyingTo.sender?.fullName || replyingTo.sender?.username || 'Unknown',
+        text: replyingTo.text,
+      } : undefined,
     };
     setMessages(prev => [...prev, optimisticMsg]);
 
+    const replyToMessageId = replyingTo?._id;
     if (socket && currentUserId) {
       socket.emit('direct-message', {
         conversationId: conversation._id,
         text,
         senderId: currentUserId,
         recipientId: other._id ?? other.id,
+        replyToMessageId,
       });
     }
+    setReplyingTo(null);
   };
 
   const handleKeyDown = (e) => {
@@ -724,7 +734,17 @@ const ChatWindow = ({ conversation, onBack, onViewProfile, isOnline, otherUser }
                           </div>
                         </div>
                       ) : (
-                        <div className="text-sm whitespace-pre-wrap break-words leading-relaxed">{msg.text}</div>
+                        <>
+                          {msg.replyTo && (
+                            <div className="mb-2 pl-2.5 border-l-2 border-indigo-400/40 bg-white/[0.03] rounded-r-lg py-1.5 px-2">
+                              <div className="text-[10px] font-bold text-indigo-400 mb-0.5 flex items-center gap-1">
+                                <Reply className="w-2.5 h-2.5" /> {msg.replyTo.senderName}
+                              </div>
+                              <div className="text-[11px] text-slate-400 truncate leading-relaxed">{msg.replyTo.text}</div>
+                            </div>
+                          )}
+                          <div className="text-sm whitespace-pre-wrap break-words leading-relaxed">{msg.text}</div>
+                        </>
                       )}
                       <div className={`flex items-center gap-1 mt-1.5 ${isOwn ? 'justify-end' : 'justify-start'}`}>
                         <span className={`text-[9px] ${isOwn ? 'text-indigo-300/50' : 'text-slate-500'}`}>
@@ -747,6 +767,13 @@ const ChatWindow = ({ conversation, onBack, onViewProfile, isOnline, otherUser }
                           title="Copy"
                         >
                           {copiedId === msg._id ? <CheckCheck className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                        </button>
+                        <button
+                          onClick={() => setReplyingTo(msg)}
+                          className="p-1 rounded-md bg-white/[0.08] hover:bg-white/[0.14] text-slate-400 hover:text-indigo-300 transition-all border border-white/[0.06]"
+                          title="Reply"
+                        >
+                          <Reply className="w-3 h-3" />
                         </button>
                         {isOwn && !isOptimistic && (
                           <>
@@ -811,6 +838,26 @@ const ChatWindow = ({ conversation, onBack, onViewProfile, isOnline, otherUser }
         </button>
       )}
 
+      {/* Reply preview */}
+      {replyingTo && (
+        <div className="px-4 py-2.5 bg-slate-900/90 border-t border-indigo-500/30 flex items-center justify-between text-xs backdrop-blur-md shrink-0">
+          <div className="flex flex-col gap-0.5 overflow-hidden">
+            <span className="font-bold text-indigo-400 flex items-center gap-1.5">
+              <Reply className="w-3.5 h-3.5" /> Replying to {replyingTo.sender?.fullName || replyingTo.sender?.username || other?.fullName || other?.username}
+            </span>
+            <span className="text-slate-300 truncate w-full opacity-80">
+              {replyingTo.text}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setReplyingTo(null)}
+            className="p-1.5 hover:bg-white/10 rounded-full text-slate-400 hover:text-white transition-colors shrink-0"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
       {/* Input */}
       <form onSubmit={handleSend} className="w-full p-2.5 md:p-3 lg:p-4 border-t border-white/10 shrink-0 flex gap-2 md:gap-3 items-end bg-[#0a0e1a]/80 backdrop-blur-md">
         <textarea

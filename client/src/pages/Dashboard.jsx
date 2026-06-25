@@ -298,7 +298,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen aurora-bg cinematic-bg-only text-white p-3 md:p-6 lg:p-8 font-sans relative overflow-x-hidden">
+    <div className="min-h-dvh w-full max-w-full aurora-bg cinematic-bg-only text-white p-3 md:p-6 lg:p-8 font-sans relative overflow-x-hidden">
       <NeonWireframeBackground intensity="subtle" />
       <div className="grid-overlay"></div>
       <div className="bg-orb-1"></div>
@@ -324,7 +324,7 @@ const Dashboard = () => {
       {/* Readability overlay */}
       <div className="fixed inset-0 bg-black/30 pointer-events-none z-[1]"></div>
 
-      <div className="max-w-6xl mx-auto space-y-5 relative z-10">
+      <div className="w-full max-w-6xl mx-auto space-y-5 relative z-10">
 
         {/* ── Header ── */}
         <div className="metallic-panel p-5 sm:p-6 rounded-2xl flex flex-col sm:flex-row justify-between items-center animate-fadeIn shadow-[0_15px_40px_rgba(0,0,0,0.4)] border-white/10 relative overflow-hidden">
@@ -621,8 +621,8 @@ const Dashboard = () => {
                   <span className="w-1.5 h-7 bg-gradient-to-b from-indigo-500 to-purple-500 rounded-full shrink-0"></span>
                   <h2 className="text-base sm:text-lg font-extrabold text-white tracking-tight">Recent Workspaces</h2>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex bg-white/[0.06] rounded-lg p-0.5 border border-white/[0.06]">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full min-w-0">
+                  <div className="flex bg-white/[0.06] rounded-lg p-0.5 border border-white/[0.06] shrink-0">
                     {[
                       { id: 'all', label: 'All' },
                       { id: 'pinned', label: 'Pinned' },
@@ -642,7 +642,7 @@ const Dashboard = () => {
                       </button>
                     ))}
                   </div>
-                  <div className="relative w-44 sm:w-52">
+                  <div className="relative w-full sm:w-52 min-w-0">
                     <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500 pointer-events-none" />
                     <input
                       type="search"

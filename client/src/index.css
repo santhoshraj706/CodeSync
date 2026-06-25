@@ -12,6 +12,8 @@
   --depth-3: 0 10px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.4), 0 0 0 1px rgba(148,163,184,0.04);
 }
 
+html, #root { width: 100%; max-width: 100%; overflow-x: hidden; }
+
 body {
   margin: 0;
   font-family: var(--font-sans);
@@ -1681,4 +1683,26 @@ code {
   .neon-wireframe-svg { animation: none; }
   .neon-wave-line { animation: none; }
   .neon-wave-glow { animation: none; }
+}
+
+/* ─── MOBILE BACKGROUND OPTIMIZATION ─── */
+@media (max-width: 768px) {
+  .cinematic-bg-only::before,
+  .cinematic-bg-only::after,
+  .cinematic-bg-only .bg-orb-1,
+  .cinematic-bg-only .bg-orb-2,
+  .cinematic-bg-only .bg-orb-3,
+  .cinematic-bg-only .bg-ring,
+  .cinematic-bg-only .bg-spotlight,
+  .bg-light-sweep,
+  .bg-3d-cube,
+  .bg-3d-diamond-1,
+  .bg-3d-diamond-2,
+  .bg-3d-diamond-3,
+  .bg-3d-triangle-1,
+  .bg-3d-triangle-2 {
+    animation: none !important;
+    opacity: 0.15 !important;
+    filter: none !important;
+  }
 }

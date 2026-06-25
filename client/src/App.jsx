@@ -2,6 +2,7 @@ import React, { useContext, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, AuthContext } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
+import { CallProvider } from './context/CallContext';
 import TowerLoader from './components/TowerLoader';
 import Landing from './pages/Landing';
 import Guide from './pages/Guide';
@@ -34,6 +35,7 @@ const App = () => {
   return (
     <AuthProvider>
       <SocketProvider>
+        <CallProvider>
         <Router>
           <Suspense fallback={<TowerLoader fullScreen text="Loading..." />}>
           <Routes>
@@ -87,6 +89,7 @@ const App = () => {
           </Routes>
           </Suspense>
         </Router>
+        </CallProvider>
       </SocketProvider>
     </AuthProvider>
   );

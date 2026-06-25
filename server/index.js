@@ -26,6 +26,7 @@ const conversationRoutes = require('./routes/conversations');
 const directMessageRoutes = require('./routes/directMessages');
 const roomInviteRoutes = require('./routes/roomInvites');
 const blockRoutes = require('./routes/blocks');
+const agoraRoutes = require('./routes/agora');
 const { socketHandler } = require('./socket/socket');
 
 const app = express();
@@ -70,6 +71,7 @@ app.use('/api/conversations', conversationRoutes);
 app.use('/api/direct-messages', directMessageRoutes);
 app.use('/api/room-invites', roomInviteRoutes);
 app.use('/api/blocks', blockRoutes);
+app.use('/api/agora', agoraRoutes);
 
 // Global error handling middleware (must be after routes)
 app.use((err, req, res, next) => {

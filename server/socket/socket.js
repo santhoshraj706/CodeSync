@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Room = require('../models/Room');
 const User = require('../models/User');
 const DirectMessage = require('../models/DirectMessage');
@@ -9,8 +10,51 @@ const roomStates = {}; // { roomId: { code: string, language: string, messages: 
 const roomPresenters = {}; // { roomId: username } - tracks active presenter
 const roomAdmins = {}; // { roomId: { id: string, username: string } } - cached admin info for delete authorization
 const onlineUsers = {}; // { userId: [socketIds] } - track online users for direct messaging
+const crypto = require('crypto');
+const pendingCalls = new Map(); // callId -> { callId, conversationId, callerId, receiverId, callerName, callerUsername, callerAvatar, receiverName, receiverUsername, status, createdAt, timeout }
+const roomCalls = new Map(); // roomId -> { roomId, active: boolean, participants: [{ userId, username, socketId }] }
+
+function generateCallId() {
+  return crypto.randomBytes(12).toString('hex');
+}
 
 const socketHandler = (io) => {
+  function getSocketIds(userId) {
+    return onlineUsers[userId] || [];
+  }
+
+  function emitToUser(userId, event, payload) {
+    const socketIds = getSocketIds(userId);
+    socketIds.forEach(sid => {
+      const sock = io.sockets.sockets.get(sid);
+      if (sock) sock.emit(event, payload);
+    });
+  }
+
+  function cleanupCallForUser(userId) {
+    for (const [callId, call] of pendingCalls) {
+      if (call.callerId === userId) {
+        if (call.status === 'ringing') {
+          clearTimeout(call.timeout);
+          call.status = 'cancelled';
+          emitToUser(call.receiverId, 'direct-call-cancelled', {
+            callId, conversationId: call.conversationId,
+            message: 'Caller went offline',
+          });
+        }
+        pendingCalls.delete(callId);
+      } else if (call.receiverId === userId && call.status === 'ringing') {
+        clearTimeout(call.timeout);
+        call.status = 'ended';
+        emitToUser(call.callerId, 'direct-call-unavailable', {
+          callId, conversationId: call.conversationId,
+          message: 'User is offline',
+        });
+        pendingCalls.delete(callId);
+      }
+    }
+  }
+
   io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
 
@@ -132,6 +176,15 @@ const socketHandler = (io) => {
 
       if (roomPresenters[roomId]) {
         socket.emit('start-presenting', { username: roomPresenters[roomId] });
+      }
+
+      // Send current room call state to joining user
+      const roomCall = roomCalls.get(roomId);
+      if (roomCall && roomCall.active) {
+        socket.emit('room-call-active', {
+          roomId,
+          participants: roomCall.participants,
+        });
       }
 
       console.log(`${username} joined room ${roomId}`);
@@ -421,6 +474,25 @@ const socketHandler = (io) => {
     socket.on('leave-room', ({ roomId, username }) => {
       socket.leave(roomId);
       leaveRoomHandler(roomId, socket.id);
+
+      // Clean up room call participation
+      const call = roomCalls.get(roomId);
+      if (call) {
+        const currentUserId = socket.data.userId;
+        call.participants = call.participants.filter(p => p.userId !== currentUserId && p.socketId !== socket.id);
+        if (call.participants.length === 0) {
+          call.active = false;
+          roomCalls.delete(roomId);
+          io.to(roomId).emit('room-call-ended', { roomId });
+        } else {
+          io.to(roomId).emit('room-call-left', {
+            roomId,
+            participants: call.participants,
+            userId: currentUserId,
+            username,
+          });
+        }
+      }
       
       // If the presenter leaves, stop presenting
       if (roomPresenters[roomId] === username) {
@@ -451,6 +523,26 @@ const socketHandler = (io) => {
     });
 
     socket.on('disconnecting', () => {
+      const currentUserId = socket.data.userId;
+      // Clean up room call participation
+      for (const [roomId, call] of roomCalls) {
+        if (call.participants.some(p => p.socketId === socket.id)) {
+          call.participants = call.participants.filter(p => p.socketId !== socket.id);
+          if (call.participants.length === 0) {
+            call.active = false;
+            roomCalls.delete(roomId);
+            io.to(roomId).emit('room-call-ended', { roomId });
+          } else {
+            io.to(roomId).emit('room-call-left', {
+              roomId,
+              participants: call.participants,
+              userId: currentUserId,
+              username: currentUsername || 'Unknown',
+            });
+          }
+        }
+      }
+
       const rooms = Array.from(socket.rooms);
       rooms.forEach(roomId => {
         if (roomId !== socket.id) {
@@ -614,19 +706,251 @@ const socketHandler = (io) => {
       socket.to(`dm:${conversationId}`).emit('direct-typing-stop', { conversationId, userId, username });
     });
 
+    // ─── Direct Audio Call Socket Events ───
+    socket.on('direct-call-initiate', async ({ conversationId, receiverId }) => {
+      try {
+        const currentUserId = socket.data.userId;
+        if (!currentUserId || !conversationId || !receiverId) return;
+        if (!mongoose.Types.ObjectId.isValid(conversationId)) return;
+
+        const conversation = await Conversation.findById(conversationId).select('participants');
+        if (!conversation) {
+          socket.emit('direct-call-unavailable', { message: 'Conversation not found' });
+          return;
+        }
+
+        const isParticipant = conversation.participants.some(
+          p => String(p) === String(currentUserId)
+        );
+        if (!isParticipant) {
+          socket.emit('direct-call-unavailable', { message: 'Not a participant' });
+          return;
+        }
+
+        const isOtherParticipant = conversation.participants.some(
+          p => String(p) === String(receiverId)
+        );
+        if (!isOtherParticipant) {
+          socket.emit('direct-call-unavailable', { message: 'Receiver is not in this conversation' });
+          return;
+        }
+
+        if (String(currentUserId) === String(receiverId)) {
+          socket.emit('direct-call-unavailable', { message: 'Cannot call yourself' });
+          return;
+        }
+
+        const blockExists = await BlockedUser.findOne({
+          $or: [
+            { blocker: currentUserId, blocked: receiverId },
+            { blocker: receiverId, blocked: currentUserId },
+          ],
+        });
+        if (blockExists) {
+          socket.emit('direct-call-unavailable', {
+            message: 'Audio call unavailable for blocked conversations',
+          });
+          return;
+        }
+
+        const receiverSockets = getSocketIds(receiverId);
+        if (receiverSockets.length === 0) {
+          socket.emit('direct-call-unavailable', { message: 'User is offline' });
+          return;
+        }
+
+        for (const [, call] of pendingCalls) {
+          if (
+            (call.callerId === currentUserId || call.receiverId === currentUserId) &&
+            call.status === 'ringing'
+          ) {
+            socket.emit('direct-call-unavailable', { message: 'Call already in progress' });
+            return;
+          }
+        }
+
+        const caller = await User.findById(currentUserId).select('username fullName avatarColor');
+        if (!caller) return;
+        const receiver = await User.findById(receiverId).select('username fullName avatarColor');
+        if (!receiver) return;
+
+        const callId = generateCallId();
+        const callRecord = {
+          callId, conversationId, callerId: currentUserId, receiverId,
+          callerName: caller.fullName || caller.username,
+          callerUsername: caller.username,
+          callerAvatar: caller.avatarColor || '#6366f1',
+          receiverName: receiver.fullName || receiver.username,
+          receiverUsername: receiver.username,
+          receiverAvatar: receiver.avatarColor || '#6366f1',
+          status: 'ringing', createdAt: Date.now(), timeout: null,
+        };
+
+        callRecord.timeout = setTimeout(() => {
+          if (pendingCalls.has(callId) && pendingCalls.get(callId).status === 'ringing') {
+            pendingCalls.get(callId).status = 'timeout';
+            emitToUser(currentUserId, 'direct-call-timeout', {
+              callId, conversationId,
+              message: "They didn't pick the phone",
+            });
+            emitToUser(receiverId, 'direct-call-missed', { callId, conversationId });
+            pendingCalls.delete(callId);
+          }
+        }, 30000);
+
+        pendingCalls.set(callId, callRecord);
+
+        emitToUser(receiverId, 'incoming-direct-call', {
+          callId, conversationId, callerId: currentUserId,
+          callerName: caller.fullName || caller.username,
+          callerUsername: caller.username,
+          callerAvatar: caller.avatarColor || '#6366f1',
+          startedAt: callRecord.createdAt, timeoutSeconds: 30,
+        });
+
+        socket.emit('direct-call-ringing', {
+          callId, conversationId, receiverId, timeoutSeconds: 30,
+        });
+      } catch (err) {
+        console.error('direct-call-initiate error:', err.message);
+      }
+    });
+
+    socket.on('direct-call-accept', async ({ callId }) => {
+      const call = pendingCalls.get(callId);
+      if (!call || call.status !== 'ringing') return;
+      const currentUserId = socket.data.userId;
+      if (String(currentUserId) !== String(call.receiverId)) return;
+
+      clearTimeout(call.timeout);
+      call.status = 'accepted';
+      pendingCalls.delete(callId);
+
+      const payload = { callId, conversationId: call.conversationId, channel: `codesync-dm-${call.conversationId}` };
+      emitToUser(call.callerId, 'direct-call-accepted', payload);
+      socket.emit('direct-call-accepted', payload);
+    });
+
+    socket.on('direct-call-reject', ({ callId }) => {
+      const call = pendingCalls.get(callId);
+      if (!call || call.status !== 'ringing') return;
+      const currentUserId = socket.data.userId;
+      if (String(currentUserId) !== String(call.receiverId)) return;
+
+      clearTimeout(call.timeout);
+      call.status = 'rejected';
+      pendingCalls.delete(callId);
+      emitToUser(call.callerId, 'direct-call-rejected', {
+        callId, conversationId: call.conversationId, message: 'Call declined',
+      });
+    });
+
+    socket.on('direct-call-cancel', ({ callId }) => {
+      const call = pendingCalls.get(callId);
+      if (!call || call.status !== 'ringing') return;
+      const currentUserId = socket.data.userId;
+      if (String(currentUserId) !== String(call.callerId)) return;
+
+      clearTimeout(call.timeout);
+      call.status = 'cancelled';
+      pendingCalls.delete(callId);
+      emitToUser(call.receiverId, 'direct-call-cancelled', {
+        callId, conversationId: call.conversationId, message: 'Call cancelled',
+      });
+    });
+
+    socket.on('direct-call-ended', ({ callId, conversationId }) => {
+      const currentUserId = socket.data.userId;
+      socket.to(`dm:${conversationId}`).emit('direct-call-ended', {
+        callId, conversationId, endedBy: currentUserId,
+      });
+    });
+
+    // ─── Room Audio Call Socket Events ───
+    socket.on('room-call-start', ({ roomId }) => {
+      const currentUserId = socket.data.userId;
+      if (!currentUserId || !roomId) return;
+      if (!socket.rooms.has(roomId)) return;
+
+      if (roomCalls.has(roomId) && roomCalls.get(roomId).active) {
+        socket.emit('room-call-error', { message: 'Room call already active' });
+        return;
+      }
+
+      const username = currentUsername || 'Unknown';
+      roomCalls.set(roomId, {
+        roomId,
+        active: true,
+        participants: [{ userId: currentUserId, username, socketId: socket.id }],
+      });
+
+      io.to(roomId).emit('room-call-started', {
+        roomId,
+        participants: roomCalls.get(roomId).participants,
+      });
+    });
+
+    socket.on('room-call-join', ({ roomId }) => {
+      const currentUserId = socket.data.userId;
+      if (!currentUserId || !roomId) return;
+      if (!socket.rooms.has(roomId)) return;
+
+      const call = roomCalls.get(roomId);
+      if (!call || !call.active) {
+        socket.emit('room-call-error', { message: 'No active room call to join' });
+        return;
+      }
+
+      const alreadyJoined = call.participants.some(p => p.userId === currentUserId);
+      if (!alreadyJoined) {
+        call.participants.push({ userId: currentUserId, username: currentUsername || 'Unknown', socketId: socket.id });
+      }
+
+      io.to(roomId).emit('room-call-joined', {
+        roomId,
+        participants: call.participants,
+        userId: currentUserId,
+        username: currentUsername || 'Unknown',
+      });
+    });
+
+    socket.on('room-call-leave', ({ roomId }) => {
+      const currentUserId = socket.data.userId;
+      if (!currentUserId || !roomId) return;
+
+      const call = roomCalls.get(roomId);
+      if (!call) return;
+
+      call.participants = call.participants.filter(p => p.userId !== currentUserId);
+
+      if (call.participants.length === 0) {
+        call.active = false;
+        roomCalls.delete(roomId);
+        io.to(roomId).emit('room-call-ended', { roomId });
+      } else {
+        io.to(roomId).emit('room-call-left', {
+          roomId,
+          participants: call.participants,
+          userId: currentUserId,
+          username: currentUsername || 'Unknown',
+        });
+      }
+    });
+
     socket.on('disconnect', () => {
       console.log('User disconnected:', socket.id);
-      // Clean up onlineUsers
       const userId = socket.data.userId;
       if (userId && onlineUsers[userId]) {
         onlineUsers[userId] = onlineUsers[userId].filter(sid => sid !== socket.id);
         if (onlineUsers[userId].length === 0) {
           delete onlineUsers[userId];
           io.emit('user-status-changed', { userId, online: false });
+          // Clean up any pending calls for this user
+          cleanupCallForUser(userId);
         }
       }
     });
   });
 };
 
-module.exports = { socketHandler, roomUsers, roomStates, roomPresenters, roomAdmins, onlineUsers };
+module.exports = { socketHandler, roomUsers, roomStates, roomPresenters, roomAdmins, onlineUsers, pendingCalls, roomCalls };

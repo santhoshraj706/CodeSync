@@ -6,7 +6,7 @@ import api from '../utils/api';
 import {
   Send, Loader2, User, LogIn, ChevronDown, Copy, CheckCheck, Clock, ArrowLeft,
   Hash, Check, X, ExternalLink, Trash2, Hourglass, CheckCircle2, AlertCircle, FileText,
-  Shield, ShieldOff, Ban, Edit3, Save, Reply
+  Shield, ShieldOff, Ban, Edit3, Save, Reply, Phone
 } from 'lucide-react';
 import InviteToRoom from './InviteToRoom';
 import EmojiPickerButton from './EmojiPickerButton';
@@ -46,7 +46,7 @@ const shouldShowDateSeparator = (msg, idx, messages) => {
   return currDate !== prevDate;
 };
 
-const ChatWindow = ({ conversation, onBack, onViewProfile, isOnline, otherUser }) => {
+const ChatWindow = ({ conversation, onBack, onViewProfile, isOnline, otherUser, onStartCall, callInProgress }) => {
   const { user } = useContext(AuthContext);
   const socket = useContext(SocketContext);
   const navigate = useNavigate();
@@ -460,6 +460,22 @@ const ChatWindow = ({ conversation, onBack, onViewProfile, isOnline, otherUser }
           >
             <LogIn className="w-4 h-4" />
           </button>
+          {(blockStatus.blockedMe || blockStatus.blockedByMe || callInProgress) ? (
+            <div
+              className="p-2 rounded-lg text-slate-500 cursor-not-allowed relative group"
+              title={callInProgress ? 'Call already active' : (blockStatus.blockedByMe ? 'Unblock this user to start a call.' : 'Audio call unavailable.')}
+            >
+              <Phone className="w-4 h-4" />
+            </div>
+          ) : (
+            <button
+              onClick={onStartCall}
+              className="p-2 rounded-lg text-slate-400 hover:text-emerald-300 hover:bg-emerald-500/10 transition-all border border-transparent hover:border-emerald-500/20"
+              title="Start audio call"
+            >
+              <Phone className="w-4 h-4" />
+            </button>
+          )}
           {blockStatus.blockedMe ? (
             <div className="p-2 rounded-lg text-slate-500 cursor-not-allowed" title="This user has blocked you">
               <Ban className="w-4 h-4" />

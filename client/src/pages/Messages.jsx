@@ -2,6 +2,7 @@ import { useState, useEffect, useContext, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { SocketContext } from '../context/SocketContext';
+import { CallContext } from '../context/CallContext';
 import api from '../utils/api';
 import NeonWireframeBackground from '../components/NeonWireframeBackground';
 import ConversationList from '../components/ConversationList';
@@ -21,6 +22,7 @@ const SKELETON_ITEMS = [1, 2, 3, 4, 5];
 const Messages = () => {
   const { user } = useContext(AuthContext);
   const socket = useContext(SocketContext);
+  const { startDirectCall, activeCall, outgoingCallStatus } = useContext(CallContext);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const currentUserId = user?._id ?? user?.id;
@@ -42,6 +44,7 @@ const Messages = () => {
   const [blockedUsersLoading, setBlockedUsersLoading] = useState(false);
   const [inviteToDeleteId, setInviteToDeleteId] = useState(null);
   const [isDeletingInvite, setIsDeletingInvite] = useState(false);
+  const [showAgoraCall, setShowAgoraCall] = useState(false);
 
   const showToast = (message, type = 'success', actionRoomId = null) => {
     setToast({ message, type, actionRoomId });
@@ -227,6 +230,12 @@ const Messages = () => {
     }
   };
 
+  const handleStartCall = () => {
+    if (!socket || !activeConversation || !activeOtherUser) return;
+    const receiverId = activeOtherUser._id ?? activeOtherUser.id;
+    startDirectCall(activeConversation._id, receiverId, activeOtherUser);
+  };
+
   const handleSendRequest = async (toId) => {
     try {
       await api.post('/chat-requests', { to: toId });
@@ -260,6 +269,10 @@ const Messages = () => {
   }, [activeConversation, currentUserId]);
 
   const isOnline = activeOtherUser ? onlineUsers?.has(activeOtherUser._id ?? activeOtherUser.id) : false;
+
+  useEffect(() => {
+    setShowAgoraCall(false);
+  }, [activeConversation]);
 
   return (
     <div className="h-screen aurora-bg text-white font-sans relative overflow-hidden flex flex-col">
@@ -298,78 +311,85 @@ const Messages = () => {
         </div>
 
         {/* Main layout */}
-        <div className="flex-1 flex gap-2 min-h-0">
+        <div className="flex-1 flex gap-2 min-w-0 min-h-0">
           {/* Left sidebar */}
-          <div className="w-full md:w-72 lg:w-80 shrink-0 flex flex-col min-h-0">
-            {/* Tabs */}
-            <div className="flex bg-white/[0.06] rounded-lg p-0.5 border border-white/[0.06] mb-1.5 shrink-0">
-              <button
-                onClick={() => {
-                  setActiveTab('messages');
-                  if (!activeConversation && conversations.length > 0 && window.innerWidth >= 768) {
-                    setActiveConversation(conversations[0]);
-                  } else if (window.innerWidth < 768) {
-                    setActiveConversation(null);
-                  }
-                }}
-                className={`flex-1 px-2 py-1.5 rounded-[7px] flex items-center justify-center text-[10px] font-bold transition-all gap-1 ${
-                  activeTab === 'messages'
-                    ? 'bg-indigo-500/20 text-indigo-200 shadow-sm border border-indigo-500/20'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <MessageCircle className="w-3 h-3" /> Chats
-              </button>
-              <button
-                onClick={() => { setActiveTab('incoming'); setActiveConversation(null); }}
-                className={`flex-1 px-2 py-1.5 rounded-[7px] flex items-center justify-center text-[10px] font-bold transition-all gap-1 ${
-                  activeTab === 'incoming'
-                    ? 'bg-indigo-500/20 text-indigo-200 shadow-sm border border-indigo-500/20'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <Inbox className="w-3 h-3" /> Incoming
-                {incomingRequests.length > 0 && (
-                  <span className="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
-                    {incomingRequests.length}
-                  </span>
-                )}
-              </button>
-              <button
-                onClick={() => { setActiveTab('invites'); setActiveConversation(null); }}
-                className={`flex-1 px-2 py-1.5 rounded-[7px] flex items-center justify-center text-[10px] font-bold transition-all gap-1 ${
-                  activeTab === 'invites'
-                    ? 'bg-indigo-500/20 text-indigo-200 shadow-sm border border-indigo-500/20'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <DoorOpen className="w-3 h-3" /> Invites
-              </button>
-              <button
-                onClick={() => { setActiveTab('outgoing'); setActiveConversation(null); }}
-                className={`flex-1 px-2 py-1.5 rounded-[7px] flex items-center justify-center text-[10px] font-bold transition-all gap-1 ${
-                  activeTab === 'outgoing'
-                    ? 'bg-indigo-500/20 text-indigo-200 shadow-sm border border-indigo-500/20'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <Send className="w-3 h-3" /> Sent
-              </button>
-              <button
-                onClick={() => { setActiveTab('blocked'); setActiveConversation(null); }}
-                className={`flex-1 px-2 py-1.5 rounded-[7px] flex items-center justify-center text-[10px] font-bold transition-all gap-1 ${
-                  activeTab === 'blocked'
-                    ? 'bg-indigo-500/20 text-indigo-200 shadow-sm border border-indigo-500/20'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <Ban className="w-3 h-3" /> Blocked
-                {blockedUsers.length > 0 && (
-                  <span className="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
-                    {blockedUsers.length}
-                  </span>
-                )}
-              </button>
+          <div className="w-full md:w-72 lg:w-80 shrink-0 flex flex-col min-w-0 min-h-0">
+            {/* Tabs — compact grid, no overflow */}
+            <div className="w-full rounded-xl border border-white/10 bg-white/[0.03] p-1 mb-1.5 shrink-0">
+              <div className="grid grid-cols-5 gap-1 w-full">
+                <button
+                  onClick={() => {
+                    setActiveTab('messages');
+                    if (!activeConversation && conversations.length > 0 && window.innerWidth >= 768) {
+                      setActiveConversation(conversations[0]);
+                    } else if (window.innerWidth < 768) {
+                      setActiveConversation(null);
+                    }
+                  }}
+                  className={`min-w-0 w-full flex items-center justify-center gap-1 px-1 py-2 text-xs rounded-lg overflow-hidden transition-all ${
+                    activeTab === 'messages'
+                      ? 'bg-violet-500/20 border border-violet-400/40 text-white shadow-[0_0_12px_rgba(139,92,246,0.25)]'
+                      : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
+                  }`}
+                >
+                  <MessageCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate leading-none">Chats</span>
+                </button>
+                <button
+                  onClick={() => { setActiveTab('incoming'); setActiveConversation(null); }}
+                  className={`min-w-0 w-full flex items-center justify-center gap-1 px-1 py-2 text-xs rounded-lg overflow-hidden transition-all ${
+                    activeTab === 'incoming'
+                      ? 'bg-violet-500/20 border border-violet-400/40 text-white shadow-[0_0_12px_rgba(139,92,246,0.25)]'
+                      : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
+                  }`}
+                >
+                  <Inbox className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate leading-none">In</span>
+                  {incomingRequests.length > 0 && (
+                    <span className="bg-red-500 text-white text-[8px] font-bold px-1 py-0.5 rounded-full min-w-[14px] text-center leading-none">
+                      {incomingRequests.length}
+                    </span>
+                  )}
+                </button>
+                <button
+                  onClick={() => { setActiveTab('invites'); setActiveConversation(null); }}
+                  className={`min-w-0 w-full flex items-center justify-center gap-1 px-1 py-2 text-xs rounded-lg overflow-hidden transition-all ${
+                    activeTab === 'invites'
+                      ? 'bg-violet-500/20 border border-violet-400/40 text-white shadow-[0_0_12px_rgba(139,92,246,0.25)]'
+                      : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
+                  }`}
+                >
+                  <DoorOpen className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate leading-none">Invites</span>
+                </button>
+                <button
+                  onClick={() => { setActiveTab('outgoing'); setActiveConversation(null); }}
+                  className={`min-w-0 w-full flex items-center justify-center gap-1 px-1 py-2 text-xs rounded-lg overflow-hidden transition-all ${
+                    activeTab === 'outgoing'
+                      ? 'bg-violet-500/20 border border-violet-400/40 text-white shadow-[0_0_12px_rgba(139,92,246,0.25)]'
+                      : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
+                  }`}
+                >
+                  <Send className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate leading-none">Sent</span>
+                </button>
+                <button
+                  onClick={() => { setActiveTab('blocked'); setActiveConversation(null); }}
+                  className={`min-w-0 w-full flex items-center justify-center gap-1 px-1 py-2 text-xs rounded-lg overflow-hidden transition-all ${
+                    activeTab === 'blocked'
+                      ? 'bg-violet-500/20 border border-violet-400/40 text-white shadow-[0_0_12px_rgba(139,92,246,0.25)]'
+                      : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
+                  }`}
+                >
+                  <Ban className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate leading-none">Block</span>
+                  {blockedUsers.length > 0 && (
+                    <span className="bg-red-500 text-white text-[8px] font-bold px-1 py-0.5 rounded-full min-w-[14px] text-center leading-none">
+                      {blockedUsers.length}
+                    </span>
+                  )}
+                </button>
+              </div>
             </div>
 
             {/* Content */}
@@ -508,6 +528,8 @@ const Messages = () => {
                 onViewProfile={handleViewProfile}
                 isOnline={isOnline}
                 otherUser={activeOtherUser}
+                onStartCall={handleStartCall}
+                callInProgress={!!activeCall || outgoingCallStatus === 'ringing' || outgoingCallStatus === 'calling'}
               />
             ) : activeTab === 'messages' ? (
               <div className="flex items-center justify-center flex-1">
@@ -551,6 +573,8 @@ const Messages = () => {
             onViewProfile={handleViewProfile}
             isOnline={isOnline}
             otherUser={activeOtherUser}
+            onStartCall={handleStartCall}
+            callInProgress={!!activeCall || outgoingCallStatus === 'ringing' || outgoingCallStatus === 'calling'}
           />
         </div>
       )}

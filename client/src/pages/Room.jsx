@@ -2,6 +2,8 @@ import { useEffect, useState, useContext, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { SocketContext } from '../context/SocketContext';
+import { CallContext } from '../context/CallContext';
+import AgoraRoomCall from '../components/AgoraRoomCall';
 import EditorComponent from '../components/Editor';
 import Chat from '../components/Chat';
 import Whiteboard from '../components/Whiteboard';
@@ -12,12 +14,17 @@ import NotesPanel from '../components/NotesPanel';
 import TowerLoader from '../components/TowerLoader';
 import api from '../utils/api';
 import confetti from 'canvas-confetti';
-import { Users, Code, PenTool, Play, LogOut, Copy, Hash, MessageSquare, Download, Wifi, WifiOff, CheckCircle2, AlertCircle, Keyboard, X, Sparkles, PanelBottom, Maximize2, Minimize2, Settings2, Plus, Minus, MonitorPlay, MonitorStop, Terminal, Layers, ChevronDown, DoorOpen, Loader2, FileText } from 'lucide-react';
+import { Users, Code, PenTool, Play, LogOut, Copy, Hash, MessageSquare, Download, Wifi, WifiOff, CheckCircle2, AlertCircle, Keyboard, X, Sparkles, PanelBottom, Maximize2, Minimize2, Settings2, Plus, Minus, MonitorPlay, MonitorStop, Terminal, Layers, ChevronDown, DoorOpen, Loader2, FileText, Phone, PhoneOff, Mic, MicOff } from 'lucide-react';
 
 const Room = () => {
   const { roomId } = useParams();
   const { user } = useContext(AuthContext);
   const socket = useContext(SocketContext);
+  const {
+    roomCall, inRoomCall, roomCallActive, isInCall,
+    startRoomCall, joinRoomCall, leaveRoomCall,
+    setRoomCall, setInRoomCall, setRoomCallActive,
+  } = useContext(CallContext);
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState('editor');
@@ -302,6 +309,44 @@ const Room = () => {
       setRoomError(message || 'Access denied');
     });
 
+    socket.on('room-call-started', ({ roomId: rId, participants }) => {
+      if (rId !== roomId) return;
+      setRoomCall({ active: true, participants, roomId: rId });
+      setRoomCallActive(true);
+    });
+
+    socket.on('room-call-joined', ({ roomId: rId, participants, userId }) => {
+      if (rId !== roomId) return;
+      setRoomCall({ active: true, participants, roomId: rId });
+      if (String(userId) === String(user?._id ?? user?.id)) {
+        setInRoomCall(true);
+      }
+    });
+
+    socket.on('room-call-left', ({ roomId: rId, participants }) => {
+      if (rId !== roomId) return;
+      setRoomCall({ active: participants.length > 0, participants, roomId: rId });
+    });
+
+    socket.on('room-call-ended', ({ roomId: rId }) => {
+      if (rId !== roomId) return;
+      setRoomCall(null);
+      setRoomCallActive(false);
+      setInRoomCall(false);
+    });
+
+    socket.on('room-call-active', ({ roomId: rId, participants }) => {
+      if (rId !== roomId) return;
+      setRoomCall({ active: true, participants, roomId: rId });
+      setRoomCallActive(true);
+    });
+
+    socket.on('room-call-error', ({ message }) => {
+      showToast(message, 'error');
+      setInRoomCall(false);
+      setRoomCallActive(false);
+    });
+
     return () => {
       socket.emit('leave-room', { roomId, username: user.username });
       socket.off('connect', onConnect);
@@ -329,6 +374,12 @@ const Room = () => {
       socket.off('notes-notification');
       socket.off('room-deleted');
       socket.off('room-join-error');
+      socket.off('room-call-started');
+      socket.off('room-call-joined');
+      socket.off('room-call-left');
+      socket.off('room-call-ended');
+      socket.off('room-call-active');
+      socket.off('room-call-error');
     };
   }, [roomId, user, socket]);
 
@@ -712,6 +763,38 @@ const Room = () => {
               >
                 <PenTool className="w-3.5 h-3.5 mr-1.5" /> Board
               </button>
+
+              {/* Room Voice Call Button */}
+              {roomCallActive && !inRoomCall && (
+                <button
+                  onClick={() => joinRoomCall(roomId)}
+                  disabled={isInCall}
+                  className={`px-3 md:px-4 py-1.5 rounded-[10px] flex items-center text-xs md:text-sm font-medium transition-all duration-200 ${
+                    isInCall
+                      ? 'text-slate-500 cursor-not-allowed'
+                      : 'text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10'
+                  }`}
+                  title={isInCall ? 'Already in another call' : 'Join Room Voice Call'}
+                >
+                  <Phone className="w-3.5 h-3.5 mr-1.5" />
+                  Join ({roomCall?.participants?.length || 1})
+                </button>
+              )}
+              {!roomCallActive && !inRoomCall && (
+                <button
+                  onClick={() => startRoomCall(roomId)}
+                  disabled={isInCall}
+                  className={`px-3 md:px-4 py-1.5 rounded-[10px] flex items-center text-xs md:text-sm font-medium transition-all duration-200 ${
+                    isInCall
+                      ? 'text-slate-500 cursor-not-allowed'
+                      : 'text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10'
+                  }`}
+                  title={isInCall ? 'Already in another call' : 'Start Room Voice Call'}
+                >
+                  <Phone className="w-3.5 h-3.5 mr-1.5" />
+                  Voice
+                </button>
+              )}
             </div>
 
             {/* Layout Presets */}
@@ -905,6 +988,18 @@ const Room = () => {
               )}
             </div>
           </div>
+
+          {/* Room Voice Call Panel */}
+          {inRoomCall && roomCall && (
+            <div className="shrink-0 px-3 pt-2">
+              <AgoraRoomCall
+                roomId={roomId}
+                currentUser={user}
+                participants={roomCall.participants}
+                onLeave={() => leaveRoomCall(roomId)}
+              />
+            </div>
+          )}
 
           {/* Main Workspace */}
           <div className="flex-1 relative bg-gradient-to-br from-[#0d1117] to-[#0f111a] chrome-border z-10 overflow-hidden shadow-2xl">

@@ -10,7 +10,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@daily-co/daily-js": "^0.91.0",
     "@monaco-editor/react": "^4.7.0",
+    "agora-rtc-sdk-ng": "^4.24.4",
     "axios": "^1.18.0",
     "canvas-confetti": "^1.9.4",
     "emoji-picker-react": "^4.19.1",

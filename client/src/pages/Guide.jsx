@@ -8,6 +8,7 @@ import {
   Plus, FileText, ListTodo, Brain, Key, Globe, Camera,
   ChevronDown, Menu, X, Wifi, HelpCircle, Lightbulb, Workflow,
   ClipboardList, Target, GitBranch as GitBranchIcon,
+  Phone, MessageCircle, Bell, AlertTriangle, RefreshCw,
 } from 'lucide-react';
 
 const RocketIcon = ({ className }) => (
@@ -47,6 +48,7 @@ const GUIDE_SECTIONS = [
       'Pinned Workspaces — Star important rooms for quick access',
       'Quick Actions — Open latest workspace, copy room ID, generate random ID',
       'Templates — Quick-start templates for Blank, DSA Practice, Web Project, Interview Prep',
+      'Find Users — Quick link to Discover page to search and connect with other developers',
       'Profile Button — Access your profile settings from the dashboard header',
     ],
   },
@@ -55,13 +57,14 @@ const GUIDE_SECTIONS = [
     title: 'Inside the Workspace',
     icon: Globe,
     color: 'from-cyan-500 to-blue-600',
-    content: 'Each room is designed for real-time teamwork, so everyone can code, discuss, draw, test, and document in one place.',
+    content: 'Each room is designed for real-time teamwork, so everyone can code, discuss, draw, test, document, and talk in one place.',
     details: [
       'Team panel on the left — see who\'s online, their profiles, and editing status',
       'Code editor in the center — the main collaborative coding area',
       'Chat / Notes tabs on the right — discuss and document your work',
       'Terminal and test output at the bottom — run code and view results',
       'Whiteboard tab for visual explanation — sketch architectures and flowcharts',
+      'Voice call button — start or join a room-wide voice channel',
     ],
   },
   {
@@ -192,12 +195,75 @@ const GUIDE_SECTIONS = [
       'The presenter can stop at any time',
     ],
   },
+  {
+    id: 'direct-messaging',
+    title: 'Direct Messaging',
+    icon: MessageCircle,
+    color: 'from-indigo-500 to-blue-600',
+    content: 'CodeSync includes a full direct messaging system. You can discover other users, send connection requests, and exchange private messages.',
+    details: [
+      'Discover Users — Go to the Discover page from the dashboard or Messages page and search by name, username, or college',
+      'Send Chat Request — Click "Send Request" on a user\'s profile card to request a conversation',
+      'Accept / Decline — Incoming requests appear in the Messages page; accept to start chatting or decline to ignore',
+      'Direct Messages — Once accepted, send real-time private messages with emoji picker and threaded replies',
+      'View Profile — Click on any user in a conversation to see their full profile in a side drawer',
+      'Online Status — Green dot indicators show who is currently online',
+      'Block / Unblock — Block users to stop receiving messages and calls; unblock anytime',
+    ],
+  },
+  {
+    id: 'room-invites',
+    title: 'Room Invites',
+    icon: Bell,
+    color: 'from-teal-500 to-cyan-600',
+    content: 'Invite connected users to join your workspace rooms directly from the Messages page.',
+    details: [
+      'Send Invite — From any DM conversation, click the invite button to send a room invite to that user',
+      'Choose Room — Select which of your rooms to invite them to',
+      'Accept / Decline — Recipients see incoming invites with room ID and details; accept to join or decline',
+      'Track Sent Invites — View pending, accepted, and declined invites in the Messages page',
+      'Cancel Invite — Revoke a pending invite if needed',
+    ],
+  },
+  {
+    id: 'voice-calls',
+    title: 'Voice Calls (Agora)',
+    icon: Phone,
+    color: 'from-emerald-500 to-teal-600',
+    content: 'CodeSync supports two types of voice calls powered by Agora RTC: direct 1-on-1 audio calls and multi-participant room voice channels.',
+    details: [
+      'Direct Audio Call — From any DM conversation, click the phone icon to start a direct audio call',
+      'Incoming Notification — When someone calls you, a full-screen modal appears with caller info, accept/decline buttons, and a 30-second countdown',
+      'Outgoing Status — While calling, see ringing, timeout, rejected, or unavailable status',
+      'Mute / Unmute — Toggle your microphone on or off during any call',
+      'Room Voice Call — Inside a workspace, click "Start Room Call" to create a voice channel; others can click "Join" to participate',
+      'Multi-participant — Room calls support multiple users simultaneously, showing participant count',
+      'End-to-end encryption — All audio streams are encrypted via Agora RTC',
+      'Mic Permission — If microphone access is denied, a clear error message appears with a retry button',
+    ],
+  },
+  {
+    id: 'troubleshooting',
+    title: 'Troubleshooting',
+    icon: HelpCircle,
+    color: 'from-slate-500 to-slate-700',
+    content: 'Common issues and how to resolve them.',
+    details: [
+      'Voice call won\'t connect — Ensure microphone permissions are granted in your browser settings. Check that Agora credentials are correctly configured in both server and client .env files.',
+      'Chat request not going through — The user may have blocked you or already has a pending request from you. Check your outgoing requests list.',
+      'Can\'t join a room — Verify the room ID and access code are correct. The room may have been deleted by the admin.',
+      'AI Assistant not responding — Check that your Gemini API key is valid and has not exceeded rate limits.',
+      'Code execution fails — Ensure Judge0 API key is active. Some languages may not be supported depending on your plan.',
+      'Whiteboard not syncing — Try refreshing the page. Whiteboard data is persisted, so no strokes will be lost.',
+      'Notifications not showing — Ensure your browser allows notifications for the site. Sound notifications can be toggled in the chat panel.',
+    ],
+  },
 ];
 
 const FAQ_DATA = [
   {
     q: 'What is CodeSync?',
-    a: 'CodeSync is a real-time collaborative coding workspace where teams can code, chat, draw, run programs, use AI, and maintain session notes together.',
+    a: 'CodeSync is a real-time collaborative coding workspace where teams can code, chat, draw, run programs, use AI, make voice calls, send direct messages, and maintain session notes together.',
   },
   {
     q: 'Can multiple users code at the same time?',
@@ -209,11 +275,19 @@ const FAQ_DATA = [
   },
   {
     q: 'Can I use CodeSync for project discussions?',
-    a: 'Yes. Use the team chat for messaging, the whiteboard for sketching ideas, and session notes to plan and document your project.',
+    a: 'Yes. Use the team chat for messaging, the whiteboard for sketching ideas, session notes to plan, direct messages for private conversations, and voice calls for real-time discussion.',
   },
   {
     q: 'Can AI help me understand code?',
     a: 'Yes. The AI assistant can explain complex code, find bugs, generate new code from descriptions, and summarize team discussions.',
+  },
+  {
+    q: 'Can I make voice calls in CodeSync?',
+    a: 'Yes. You can start direct audio calls with any connected user from the Messages page, or start/join a multi-participant voice channel inside any workspace room. Powered by Agora RTC.',
+  },
+  {
+    q: 'How do I send a direct message?',
+    a: 'Go to the Discover page, search for a user by name or username, send a chat request, and once accepted you can exchange private messages with emoji and reply support.',
   },
   {
     q: 'Are session notes saved?',
@@ -368,7 +442,7 @@ const Guide = () => {
           </span>
         </h1>
         <p className="text-base sm:text-lg md:text-xl text-gray-300 max-w-3xl mx-auto mb-8 sm:mb-10 leading-relaxed px-2">
-          Learn how to create workspaces, collaborate with your team, write code together, use AI, manage session notes, run tests, and explain ideas visually.
+          Learn how to create workspaces, collaborate with your team, write code together, use AI, make voice calls, send direct messages, manage session notes, run tests, and explain ideas visually.
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
           <Link to="/signup" className="w-full sm:w-auto bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl font-bold text-sm sm:text-lg transition-all shadow-[0_0_20px_rgba(99,102,241,0.4)] hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(99,102,241,0.6)] border border-white/10 flex items-center justify-center gap-2">
@@ -382,8 +456,8 @@ const Guide = () => {
 
       {/* Quick Overview Cards */}
       <section data-reveal className="max-w-6xl mx-auto px-4 sm:px-6 pb-12 sm:pb-16">
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
-          {GUIDE_SECTIONS.slice(0, 6).map(s => {
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+          {GUIDE_SECTIONS.slice(0, 10).map(s => {
             const Icon = s.icon;
             return (
               <button
@@ -503,7 +577,7 @@ const Guide = () => {
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4">Recommended Workflow</h2>
           <p className="text-gray-400 text-sm sm:text-base md:text-lg max-w-2xl mx-auto">A proven workflow to get the most out of CodeSync sessions.</p>
         </div>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
           {[
             { step: '01', icon: Plus, label: 'Create workspace', desc: 'Set up a room with a unique ID and password.' },
             { step: '02', icon: FileText, label: 'Add session notes', desc: 'Define the aim, agenda, and split tasks.' },
@@ -513,7 +587,8 @@ const Guide = () => {
             { step: '06', icon: Code, label: 'Write code together', desc: 'Collaborate on the code in real-time.' },
             { step: '07', icon: Play, label: 'Test and execute', desc: 'Run tests and execute code to validate.' },
             { step: '08', icon: Sparkles, label: 'Use AI assistant', desc: 'Get help with explanations and fixes.' },
-            { step: '09', icon: Download, label: 'Export everything', desc: 'Save notes, chat, and code as files.' },
+            { step: '09', icon: Phone, label: 'Talk via voice call', desc: 'Jump on a call when real-time discussion is faster.' },
+            { step: '10', icon: Download, label: 'Export everything', desc: 'Save notes, chat, and code as files.' },
           ].map(({ step, icon: Icon, label, desc }) => (
             <div key={step} className="metallic-card p-4 sm:p-5 rounded-2xl">
               <div className="flex items-center gap-3 mb-3">
@@ -537,12 +612,12 @@ const Guide = () => {
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
           {[
-            { icon: Zap, label: 'Hackathon Teams', desc: 'Build projects at lightning speed with real-time collaboration, integrated chat, and instant code execution.' },
-            { icon: Users, label: 'College Project Groups', desc: 'Coordinate group projects with session notes, task assignment, and collaborative editing.' },
-            { icon: Monitor, label: 'Coding Interviews', desc: 'Conduct live coding interviews with whiteboard support and real-time code review.' },
-            { icon: BookOpen, label: 'Peer Learning', desc: 'Learn together by pair programming, explaining code with AI, and discussing in chat.' },
-            { icon: GraduationCap, label: 'Classroom Demos', desc: 'Teachers can present code, share whiteboard diagrams, and interact with students in real-time.' },
-            { icon: Lightbulb, label: 'Algorithm Sessions', desc: 'Visualize algorithms on the whiteboard while coding and testing them side by side.' },
+            { icon: Zap, label: 'Hackathon Teams', desc: 'Build projects at lightning speed with real-time collaboration, integrated chat, voice calls, and instant code execution.' },
+            { icon: Users, label: 'College Project Groups', desc: 'Coordinate group projects with session notes, task assignment, direct messaging, and collaborative editing.' },
+            { icon: Monitor, label: 'Coding Interviews', desc: 'Conduct live coding interviews with whiteboard support, voice calls, and real-time code review.' },
+            { icon: BookOpen, label: 'Peer Learning', desc: 'Learn together by pair programming, explaining code with AI, discussing in chat, and jumping on voice calls.' },
+            { icon: GraduationCap, label: 'Classroom Demos', desc: 'Teachers can present code, share whiteboard diagrams, lead voice discussions, and interact with students in real-time.' },
+            { icon: Lightbulb, label: 'Algorithm Sessions', desc: 'Visualize algorithms on the whiteboard while coding, testing, and discussing them via voice or chat.' },
           ].map(({ icon: Icon, label, desc }) => (
             <div key={label} className="metallic-card p-5 sm:p-6 rounded-2xl sm:rounded-3xl">
               <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/25 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
@@ -591,7 +666,7 @@ const Guide = () => {
               <Code className="w-8 h-8 sm:w-10 sm:h-10 text-indigo-300" />
             </div>
             <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold mb-3 sm:mb-4">Ready to collaborate better?</h2>
-            <p className="text-gray-400 text-sm sm:text-base md:text-lg max-w-xl mx-auto mb-8 sm:mb-10">Create a workspace, invite your team, and start coding with chat, notes, AI, whiteboard, and live execution.</p>
+            <p className="text-gray-400 text-sm sm:text-base md:text-lg max-w-xl mx-auto mb-8 sm:mb-10">Create a workspace, invite your team, and start coding with chat, notes, AI, voice calls, direct messaging, whiteboard, and live execution.</p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
               <Link to="/signup" className="w-full sm:w-auto bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl font-bold text-sm sm:text-lg transition-all shadow-[0_0_20px_rgba(99,102,241,0.4)] hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(99,102,241,0.6)] border border-white/10 flex items-center justify-center gap-2">
                 Get Started <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />

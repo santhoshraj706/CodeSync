@@ -5,15 +5,18 @@ import {
   Code, Users, PenTool, Zap, Terminal, Globe, Shield, Sparkles,
   MessageSquare, ChevronRight, GitBranch, ExternalLink, Play,
   Monitor, Layout, ArrowRight, Star, BookOpen, GraduationCap,
-  Wifi, Check, ChevronDown, Plus, Menu, X
+  Wifi, Check, ChevronDown, Plus, Menu, X, Phone, Headphones,
+  MessageCircle, FileText, User, Bell
 } from 'lucide-react';
 
 const FAQ_DATA = [
-  { q: 'What is CodeSync?', a: 'CodeSync is a real-time collaborative code editor with an integrated whiteboard, team chat, live code execution, and AI assistance. It lets you code, discuss, draw, and run code with your team in one seamless workspace.' },
+  { q: 'What is CodeSync?', a: 'CodeSync is a real-time collaborative coding platform that combines a code editor, whiteboard, team chat, live code execution, AI assistant, session notes, direct messaging, room invites, and voice calls into one seamless workspace.' },
   { q: 'Can multiple users code together?', a: 'Yes. Multiple users can join the same room and edit code simultaneously. You will see each other\'s cursors, selections, and changes in real time — just like Google Docs for code.' },
   { q: 'Does CodeSync support live code execution?', a: 'Yes. CodeSync includes a built-in code execution engine. You can run your code directly in the browser and see the output instantly, making it easy to test and debug collaboratively.' },
   { q: 'Can teams use chat and whiteboard?', a: 'Absolutely. Every room comes with a team chat for messaging and a live whiteboard for sketching diagrams, flowcharts, and visual ideas alongside your code.' },
   { q: 'Does CodeSync include AI assistance?', a: 'Yes. CodeSync features an AI Assistant that can help review code, suggest improvements, explain concepts, and answer questions — all within your collaborative workspace.' },
+  { q: 'Does CodeSync support voice calls?', a: 'Yes! You can make direct audio calls to connected users and join multi-participant voice channels inside workspace rooms. Powered by Agora RTC with mute/unmute and incoming call notifications.' },
+  { q: 'Can I send direct messages to other users?', a: 'Yes. Use the Discover page to search for users, send a chat request, and once accepted you can send private messages, reply with threaded context, use emoji reactions, and make audio calls.' },
 ];
 
 const Landing = () => {
@@ -147,6 +150,51 @@ const Landing = () => {
         </div>
       </div>
     ),
+    calls: (
+      <div className="flex items-center justify-center h-full p-4 sm:p-6">
+        <div className="w-full max-w-sm bg-gray-900/60 rounded-xl border border-gray-700/40 p-4 space-y-3">
+          <div className="flex items-center gap-2 text-xs text-gray-400 mb-3">
+            <Phone className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="font-semibold">Voice Calls</span>
+          </div>
+          <div className="flex flex-col items-center py-4">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-xl font-bold text-white mb-3 border border-white/10">S</div>
+            <p className="text-sm font-semibold text-white">Sarah</p>
+            <p className="text-xs text-emerald-400 flex items-center gap-1.5 mt-1">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              Incoming audio call
+            </p>
+            <p className="text-[10px] text-gray-500 mt-1 font-mono">24s</p>
+          </div>
+          <div className="flex justify-center gap-4">
+            <div className="p-3 rounded-full bg-red-500/20 text-red-400 border border-red-500/30"><PhoneOff className="w-4 h-4" /></div>
+            <div className="p-3 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 animate-pulse"><Phone className="w-4 h-4" /></div>
+          </div>
+        </div>
+      </div>
+    ),
+    notes: (
+      <div className="flex flex-col h-full p-3 sm:p-4">
+        <div className="flex items-center gap-2 text-xs text-gray-400 mb-3 px-2">
+          <FileText className="w-3.5 h-3.5 text-amber-400" />
+          <span className="font-semibold">Session Notes</span>
+        </div>
+        <div className="flex-1 space-y-2 px-2 overflow-hidden">
+          <div className="bg-gray-800/60 rounded-xl p-3 border border-gray-700/30">
+            <p className="text-[10px] text-amber-300 font-semibold mb-1">Aim / Objective</p>
+            <p className="text-xs text-gray-300">Build authentication API with JWT</p>
+          </div>
+          <div className="bg-gray-800/60 rounded-xl p-3 border border-gray-700/30">
+            <p className="text-[10px] text-amber-300 font-semibold mb-1">Tasks</p>
+            <div className="flex items-center gap-2 text-xs text-gray-300"><Check className="w-3 h-3 text-emerald-400" /> User model & schema</div>
+            <div className="flex items-center gap-2 text-xs text-gray-300 mt-1"><div className="w-3 h-3 rounded border border-yellow-400"></div> Login route</div>
+          </div>
+        </div>
+      </div>
+    ),
   };
 
   return (
@@ -267,7 +315,7 @@ const Landing = () => {
         </h1>
 
         <p className="text-base sm:text-lg md:text-xl text-gray-300 max-w-3xl mx-auto mb-6 sm:mb-8 leading-relaxed px-2">
-          CodeSync is a real-time collaborative code editor with an integrated whiteboard, team chat, and live execution. Brainstorm, build, and run code instantly with your team.
+          CodeSync is a real-time collaborative coding platform with a live editor, whiteboard, team chat, voice calls, AI assistance, direct messaging, and code execution. Brainstorm, build, and run code instantly with your team.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 animate-fadeIn animate-delay-100">
@@ -287,6 +335,7 @@ const Landing = () => {
             { icon: MessageSquare, label: 'Team Chat', color: 'text-pink-300 bg-pink-500/10 border-pink-500/20' },
             { icon: Sparkles, label: 'AI Assistant', color: 'text-amber-300 bg-amber-500/10 border-amber-500/20' },
             { icon: Play, label: 'Code Execution', color: 'text-cyan-300 bg-cyan-500/10 border-cyan-500/20' },
+            { icon: Phone, label: 'Audio Calls', color: 'text-emerald-300 bg-emerald-500/10 border-emerald-500/20' },
           ].map(({ icon: Icon, label, color }) => (
             <div key={label} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold ${color}`}>
               <Icon className="w-3.5 h-3.5" />
@@ -315,6 +364,8 @@ const Landing = () => {
                 { id: 'chat', icon: MessageSquare, label: 'Chat' },
                 { id: 'ai', icon: Sparkles, label: 'AI' },
                 { id: 'output', icon: Terminal, label: 'Output' },
+                { id: 'calls', icon: Phone, label: 'Calls' },
+                { id: 'notes', icon: FileText, label: 'Notes' },
               ].map(({ id, icon: Icon, label }) => (
                 <button
                   key={id}
@@ -367,13 +418,16 @@ const Landing = () => {
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
           {[
-            { icon: Globe, label: 'Real-Time Sync', desc: 'See teammates\' cursors and edits with zero-latency collaboration.', color: 'blue', border: 'hover:border-blue-500/40', iconbg: 'bg-blue-500/10', iconcolor: 'text-blue-400', glow: 'group-hover:shadow-blue-500/10' },
-            { icon: Code, label: 'Pro Editor', desc: 'Monaco-powered editing with syntax highlighting, auto-completion, and multi-language support.', color: 'purple', border: 'hover:border-purple-500/40', iconbg: 'bg-purple-500/10', iconcolor: 'text-purple-400', glow: 'group-hover:shadow-purple-500/10' },
-            { icon: PenTool, label: 'Live Whiteboard', desc: 'Sketch architectures and draw flowcharts on an integrated collaborative canvas.', color: 'emerald', border: 'hover:border-emerald-500/40', iconbg: 'bg-emerald-500/10', iconcolor: 'text-emerald-400', glow: 'group-hover:shadow-emerald-500/10' },
-            { icon: Play, label: 'Live Execution', desc: 'Compile and run code directly in the browser with real-time output feedback.', color: 'yellow', border: 'hover:border-yellow-500/40', iconbg: 'bg-yellow-500/10', iconcolor: 'text-yellow-400', glow: 'group-hover:shadow-yellow-500/10' },
-            { icon: Users, label: 'Team Chat', desc: 'Integrated messaging with replies, editing, and emoji support right where the code lives.', color: 'pink', border: 'hover:border-pink-500/40', iconbg: 'bg-pink-500/10', iconcolor: 'text-pink-400', glow: 'group-hover:shadow-pink-500/10' },
-            { icon: Shield, label: 'Secure Workspaces', desc: 'Password-protected rooms with admin controls for managing access and data.', color: 'cyan', border: 'hover:border-cyan-500/40', iconbg: 'bg-cyan-500/10', iconcolor: 'text-cyan-400', glow: 'group-hover:shadow-cyan-500/10' },
-          ].map(({ icon: Icon, label, desc, border, iconbg, iconcolor, glow }) => (
+            { icon: Globe, label: 'Real-Time Sync', desc: 'See teammates\' cursors and edits with zero-latency collaboration.', border: 'hover:border-blue-500/40', iconbg: 'bg-blue-500/10', iconcolor: 'text-blue-400' },
+            { icon: Code, label: 'Pro Editor', desc: 'Monaco-powered editing with syntax highlighting, auto-completion, and multi-language support.', border: 'hover:border-purple-500/40', iconbg: 'bg-purple-500/10', iconcolor: 'text-purple-400' },
+            { icon: PenTool, label: 'Live Whiteboard', desc: 'Sketch architectures and draw flowcharts on an integrated collaborative canvas.', border: 'hover:border-emerald-500/40', iconbg: 'bg-emerald-500/10', iconcolor: 'text-emerald-400' },
+            { icon: MessageSquare, label: 'Team Chat', desc: 'Integrated messaging with replies, editing, and emoji support right where the code lives.', border: 'hover:border-pink-500/40', iconbg: 'bg-pink-500/10', iconcolor: 'text-pink-400' },
+            { icon: Play, label: 'Live Execution', desc: 'Compile and run code directly in the browser with real-time output feedback.', border: 'hover:border-yellow-500/40', iconbg: 'bg-yellow-500/10', iconcolor: 'text-yellow-400' },
+            { icon: Phone, label: 'Voice Calls', desc: 'Direct audio calls and multi-participant room voice channels powered by Agora RTC.', border: 'hover:border-emerald-500/40', iconbg: 'bg-emerald-500/10', iconcolor: 'text-emerald-400' },
+            { icon: MessageCircle, label: 'Direct Messages', desc: 'Discover users, send chat requests, and exchange private messages with emoji and reply support.', border: 'hover:border-indigo-500/40', iconbg: 'bg-indigo-500/10', iconcolor: 'text-indigo-400' },
+            { icon: Sparkles, label: 'AI Assistant', desc: 'Chat, explain, fix, and generate code with AI. Get smart help without leaving your workspace.', border: 'hover:border-amber-500/40', iconbg: 'bg-amber-500/10', iconcolor: 'text-amber-400' },
+            { icon: Shield, label: 'Secure Workspaces', desc: 'Password-protected rooms with admin controls for managing access and data.', border: 'hover:border-cyan-500/40', iconbg: 'bg-cyan-500/10', iconcolor: 'text-cyan-400' },
+          ].map(({ icon: Icon, label, desc, border, iconbg, iconcolor }) => (
             <div
               key={label}
                className={`group metallic-card p-5 sm:p-6 md:p-8 rounded-2xl sm:rounded-3xl ${border}`}
@@ -394,14 +448,15 @@ const Landing = () => {
       <section id="how-it-works" data-reveal className="max-w-5xl mx-auto px-4 sm:px-6 pb-16 sm:pb-24">
         <div className="text-center mb-10 sm:mb-14">
           <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-3 sm:mb-4">How CodeSync Works</h2>
-          <p className="text-gray-400 text-sm sm:text-base md:text-lg max-w-2xl mx-auto">Get your team coding together in three simple steps.</p>
+          <p className="text-gray-400 text-sm sm:text-base md:text-lg max-w-2xl mx-auto">Get your team coding together in a few simple steps.</p>
         </div>
 
-        <div className="grid sm:grid-cols-3 gap-5 sm:gap-6 md:gap-8">
+        <div className="grid sm:grid-cols-4 gap-5 sm:gap-6 md:gap-8">
           {[
             { step: '01', icon: Plus, label: 'Create a workspace', desc: 'Generate a unique room ID, set an access code, and share it with your team.' },
             { step: '02', icon: UserPlusIcon, label: 'Invite your team', desc: 'Share the room ID and access code. Teammates join instantly — no account setup required.' },
             { step: '03', icon: Layout, label: 'Code, discuss, draw, run', desc: 'Edit code together, chat in real-time, sketch ideas, and execute code without leaving the browser.' },
+            { step: '04', icon: Phone, label: 'Talk when needed', desc: 'Jump into a voice call directly with any teammate or start a room-wide voice channel.' },
           ].map(({ step, icon: Icon, label, desc }) => (
             <div key={step} className="relative group">
               <div className="metallic-card p-6 sm:p-8 rounded-2xl sm:rounded-3xl">
@@ -412,7 +467,7 @@ const Landing = () => {
                 <h3 className="text-lg sm:text-xl font-bold text-white mb-3 relative">{label}</h3>
                 <p className="text-gray-400 text-sm sm:text-base leading-relaxed relative">{desc}</p>
               </div>
-              {step !== '03' && (
+              {step !== '04' && (
                 <div className="hidden sm:flex absolute top-1/2 -right-4 sm:-right-5 transform -translate-y-1/2 z-10 text-indigo-400/40">
                   <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
@@ -517,6 +572,13 @@ const UserPlusIcon = ({ className }) => (
     <circle cx="8.5" cy="7" r="4" />
     <line x1="20" y1="8" x2="20" y2="14" />
     <line x1="23" y1="11" x2="17" y2="11" />
+  </svg>
+);
+
+const PhoneOff = ({ className }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+    <line x1="1" y1="1" x2="23" y2="23" />
   </svg>
 );
 
